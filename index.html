@@ -154,7 +154,7 @@
     <div id="controls">
         <div class="control-group">
             <label for="point-size">Point Size:</label>
-            <input type="range" id="point-size" min="0.1" max="5" step="0.1" value="1">
+            <input type="range" id="point-size" min="0.01" max="5" step="0.01" value="1">
             <span id="point-size-value">1.0</span>
         </div>
         <button id="reset-camera">Reset View</button>
@@ -200,6 +200,7 @@
         controls.screenSpacePanning = true;
         controls.minDistance = 1;
         controls.maxDistance = 1000;
+        controls.zoomSpeed = 1.5;
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -238,7 +239,7 @@
                 // Calculate bounding sphere for camera positioning
                 geometry.computeBoundingSphere();
                 const radius = geometry.boundingSphere.radius;
-                const distance = radius * 2.5;
+                const distance = radius * 1.5;
                 camera.position.set(distance, distance * 0.5, distance);
                 camera.lookAt(0, 0, 0);
                 controls.target.set(0, 0, 0);
