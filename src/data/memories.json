@@ -2,35 +2,12 @@
     {
         "id": "gsapp-making",
         "title": "GSAPP Making",
-        "type": "evolution",
+        "type": "static",
         "timeline": [
             {
-                "label": "Phase 1",
+                "label": "Scan",
                 "modelSrc": "/models/GSAPP-making.ply",
-                "description": "Initial scan of the making process."
-            },
-            {
-                "label": "Phase 2",
-                "modelSrc": "/models/GSAPP-making.ply",
-                "traces": [
-                    {
-                        "position": [
-                            0,
-                            0.5,
-                            0
-                        ],
-                        "label": "Work Station",
-                        "description": "The central area of activity...",
-                        "pointIndices": [
-                            100,
-                            101,
-                            102,
-                            103,
-                            104,
-                            105
-                        ]
-                    }
-                ]
+                "description": "Point cloud scan of the making process."
             }
         ]
     }

@@ -1,71 +1,50 @@
 import * as THREE from 'three'
 import { shaderMaterial } from '@react-three/drei'
-import { extend, ReactThreeFiber } from '@react-three/fiber'
+import { extend } from '@react-three/fiber'
 
 const MemoryShaderMaterial = shaderMaterial(
   {
     uTime: 0,
-    uColor: new THREE.Color(0.1, 0.1, 0.2), // Dark atmospheric base
-    uHighlightColor: new THREE.Color(1.5, 1.5, 2.0), // Bright bluish white for traces
+    uColor: new THREE.Color(0.8, 0.85, 0.9), // Fallback color (light grey-blue)
     uPixelRatio: 1,
-    uSize: 40, // Base point size
-    uDepth: 0, // For potential future depth effects
+    uSize: 0.5, // Base point size
   },
-  // Vertex Shader
-  `
+  // ─── Vertex Shader ───
+  /* glsl */ `
     uniform float uTime;
     uniform float uPixelRatio;
     uniform float uSize;
-    
-    attribute float aTraceMask; // 0 or 1, identifies trace points
-    attribute vec3 aRandom; // Random values for noise/variation
-    
-    varying vec2 vUv;
-    varying float vTraceMask;
+
+    attribute float aTraceMask;
+    // 'color' attribute is automatically injected by Three.js when vertexColors is enabled
+
+    varying vec3 vColor;
     varying float vDepth;
 
-    // Simplex noise function (simplified)
-    vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
-
     void main() {
-      vUv = uv;
-      vTraceMask = aTraceMask;
-      
+      vColor = color;
+
       vec3 pos = position;
-      
-      // Wave effect: Sine wave based on time and position
-      // Stronger at center or specific areas could be controlled by another attribute
-      float noiseFreq = 0.5;
-      float noiseAmp = 0.05;
-      float wave = sin(uTime * 1.5 + pos.x * noiseFreq + pos.y * noiseFreq) * noiseAmp;
-      
-      // Apply wave only slightly to keep shape recognizable, 
-      // maybe more intense for "unstable" memories
+
+      // Subtle wave animation
+      float wave = sin(uTime * 0.8 + pos.x * 0.3 + pos.y * 0.3) * 0.02;
       pos.y += wave;
-      pos.z += wave * 0.5;
 
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      
+
       vDepth = -mvPosition.z;
 
-      // Size attenuation: Points smaller when further away
-      // gl_PointSize = uSize * uPixelRatio * (1.0 / -mvPosition.z);
-      gl_PointSize = uSize * (10.0 / -mvPosition.z) * uPixelRatio;
-      
-      // Trace points slightly larger - DISABLED
-      // if (vTraceMask > 0.5) {
-      //   gl_PointSize *= 1.5;
-      // }
+      // Size attenuation
+      gl_PointSize = uSize * uPixelRatio * (150.0 / -mvPosition.z);
+      gl_PointSize = max(gl_PointSize, 1.0);
     }
   `,
-  // Fragment Shader
-  `
-    uniform float uTime;
+  // ─── Fragment Shader ───
+  /* glsl */ `
     uniform vec3 uColor;
-    uniform vec3 uHighlightColor;
-    
-    varying float vTraceMask;
+
+    varying vec3 vColor;
     varying float vDepth;
 
     void main() {
@@ -73,35 +52,12 @@ const MemoryShaderMaterial = shaderMaterial(
       vec2 cxy = 2.0 * gl_PointCoord - 1.0;
       float r = dot(cxy, cxy);
       if (r > 1.0) discard;
+
       float delta = fwidth(r);
       float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r);
 
-      // Defualt color
-      vec3 finalColor = uColor;
-      
-      // Trace Highlight Flow Effect - DISABLED
-      // if (vTraceMask > 0.5) {
-      //   // Flowing light effect using time
-      //   float flow = sin(uTime * 3.0 + vDepth * 0.5); // Flow along depth
-      //   flow = smoothstep(-0.2, 0.2, flow); // Sharpen flow
-      //   
-      //   // Mix highlight based on flow
-      //   finalColor = mix(uColor, uHighlightColor, flow * 0.8 + 0.2);
-      //   
-      //   // Add glow bloom (simple brightness boost)
-      //   finalColor *= 2.0;
-      // }
-
-      // Chromatic Aberration (Simulated shift based on screen position/coord)
-      // For points, true chromatic aberration is hard in fragment shader on single point, 
-      // but we can color shift based on screen position or depth.
-      // Simple fake: slight RGB split at edges of point
-      // vec3 shiftColor = finalColor;
-      // shiftColor.r *= 1.0 + length(cxy) * 0.1;
-      // shiftColor.b *= 1.0 - length(cxy) * 0.1;
-      
-      // Vignette (distance from center of screen)
-      // gl_FragCoord integration...
+      // Use vertex color; fallback to uniform if vertex color is missing (black)
+      vec3 finalColor = (length(vColor) > 0.01) ? vColor : uColor;
 
       gl_FragColor = vec4(finalColor, alpha);
     }
@@ -113,7 +69,7 @@ extend({ MemoryShaderMaterial })
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      memoryShaderMaterial: any // ReactThreeFiber.Object3DNode<THREE.ShaderMaterial, typeof MemoryShaderMaterial>
+      memoryShaderMaterial: any
     }
   }
 }
