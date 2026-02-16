@@ -7,7 +7,7 @@ interface State {
 }
 
 export const useStore = create<State>((set) => ({
-    viewMode: 'detail',
-    activeMemoryId: 'gsapp-making',
+    viewMode: 'grid',
+    activeMemoryId: null,
     set: (state) => set(state),
 }))

@@ -2,13 +2,8 @@
     {
         "id": "gsapp-making",
         "title": "GSAPP Making",
-        "type": "static",
-        "timeline": [
-            {
-                "label": "Scan",
-                "modelSrc": "/models/GSAPP-making.ply",
-                "description": "Point cloud scan of the making process."
-            }
-        ]
+        "description": "Point cloud scan of the making process at GSAPP.",
+        "thumbnail": "/thumbnails/gsapp-making.jpg",
+        "modelSrc": "/models/GSAPP-making.ply"
     }
 ]

@@ -8,50 +8,15 @@ import { PointCloud } from './PointCloud'
 import memories from '@/data/memories.json'
 
 function SceneContent() {
-    const { viewMode, activeMemoryId, set } = useStore((s) => s)
+    const { activeMemoryId } = useStore((s) => s)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
 
-    // Gallery layout
-    const GRID_COLS = 3
-    const GRID_SPACING = 3
+    if (!activeMemory) return null
 
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
-
-            {/* GALLERY MODE */}
-            {viewMode === 'grid' && (
-                <group>
-                    {memories.map((mem, i) => {
-                        const row = Math.floor(i / GRID_COLS)
-                        const col = i % GRID_COLS
-                        const x = (col - (GRID_COLS - 1) / 2) * GRID_SPACING
-                        const y = -(row - (Math.ceil(memories.length / GRID_COLS) - 1) / 2) * GRID_SPACING
-                        const modelSrc = mem.timeline[mem.timeline.length - 1].modelSrc
-
-                        return (
-                            <group key={mem.id} position={[x, y, 0]}>
-                                <PointCloud
-                                    url={modelSrc}
-                                    scale={0.3}
-                                    opacity={0.9}
-                                    onClick={() => set({ viewMode: 'detail', activeMemoryId: mem.id })}
-                                />
-                            </group>
-                        )
-                    })}
-                </group>
-            )}
-
-            {/* DETAIL MODE */}
-            {viewMode === 'detail' && activeMemory && (
-                <group>
-                    <PointCloud
-                        url={activeMemory.timeline[activeMemory.timeline.length - 1].modelSrc}
-                        opacity={1}
-                    />
-                </group>
-            )}
+            <PointCloud url={activeMemory.modelSrc} opacity={1} />
         </>
     )
 }
