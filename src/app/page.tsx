@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useStore } from '@/store'
 import { Gallery } from '@/components/dom/Gallery'
@@ -10,10 +11,18 @@ const Scene = dynamic(() => import('@/components/canvas/Scene'), { ssr: false })
 
 export default function Home() {
   const viewMode = useStore((s) => s.viewMode)
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch: render nothing until client is ready
+  useEffect(() => { setMounted(true) }, [])
+
+  if (!mounted) {
+    return <main className="h-screen w-full bg-[#0a0a0a]" />
+  }
 
   return (
     <main className="h-screen w-full bg-[#0a0a0a] text-white relative overflow-hidden">
-      {/* 3D Canvas — always mounted but only active in detail */}
+      {/* 3D Canvas — only mounts in detail mode */}
       <AnimatePresence>
         {viewMode === 'detail' && (
           <motion.div
