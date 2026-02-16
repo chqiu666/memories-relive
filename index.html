@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -123,8 +124,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         #stats {
@@ -134,9 +140,10 @@
         }
     </style>
 </head>
+
 <body>
     <div id="canvas-container"></div>
-    
+
     <div id="loading">
         <div class="spinner"></div>
         <p>Loading point cloud...</p>
@@ -239,8 +246,8 @@
                 // Calculate bounding sphere for camera positioning
                 geometry.computeBoundingSphere();
                 const radius = geometry.boundingSphere.radius;
-                const distance = radius * 1.5;
-                camera.position.set(distance, distance * 0.5, distance);
+                const distance = radius * 1;
+                camera.position.set(0, 0, distance);
                 camera.lookAt(0, 0, 0);
                 controls.target.set(0, 0, 0);
                 controls.update();
@@ -268,7 +275,7 @@
         // Point size control
         const pointSizeSlider = document.getElementById('point-size');
         const pointSizeValue = document.getElementById('point-size-value');
-        
+
         pointSizeSlider.addEventListener('input', (e) => {
             const size = parseFloat(e.target.value);
             pointSizeValue.textContent = size.toFixed(2);
@@ -283,7 +290,7 @@
                 const geometry = pointCloud.geometry;
                 const radius = geometry.boundingSphere.radius;
                 const distance = radius * 2.5;
-                
+
                 camera.position.set(distance, distance * 0.5, distance);
                 camera.lookAt(0, 0, 0);
                 controls.target.set(0, 0, 0);
@@ -308,4 +315,5 @@
         animate();
     </script>
 </body>
+
 </html>
