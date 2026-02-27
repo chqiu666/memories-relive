@@ -46,8 +46,8 @@ export function DebugPanel() {
                         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                             <span className="text-xs font-medium text-white/70 uppercase tracking-widest">Debug</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${rendererType === 'WebGPU'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                 }`}>
                                 {rendererType}
                             </span>
@@ -81,9 +81,9 @@ export function DebugPanel() {
                             <SliderControl
                                 label="Point Size"
                                 value={pointSize}
-                                min={0.1}
-                                max={3.0}
-                                step={0.05}
+                                min={0.01}
+                                max={1.00}
+                                step={0.01}
                                 displayValue={pointSize.toFixed(2)}
                                 onChange={(v) => set({ pointSize: v })}
                             />

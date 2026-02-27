@@ -27,8 +27,8 @@ export const useStore = create<DebugState>((set) => ({
 
     debugOpen: false,
 
-    pointSize: 0.5,
-    samplePercent: 100,
+    pointSize: 0.10,
+    samplePercent: 50,
 
     fps: 0,
     totalPoints: 0,
