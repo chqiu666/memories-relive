@@ -1,13 +1,39 @@
 import { create } from 'zustand'
 
-interface State {
+interface DebugState {
+    // View state
     viewMode: 'grid' | 'detail'
     activeMemoryId: string | null
-    set: (state: Partial<State>) => void
+
+    // Debug panel
+    debugOpen: boolean
+
+    // Rendering controls
+    pointSize: number      // base point size (0.1 – 3.0)
+    samplePercent: number  // % of points to render (1 – 100)
+
+    // Runtime stats (set by PointCloud every frame)
+    fps: number
+    totalPoints: number
+    renderedPoints: number
+    rendererType: string   // 'WebGPU' or 'WebGL'
+
+    set: (state: Partial<DebugState>) => void
 }
 
-export const useStore = create<State>((set) => ({
+export const useStore = create<DebugState>((set) => ({
     viewMode: 'grid',
     activeMemoryId: null,
+
+    debugOpen: false,
+
+    pointSize: 0.5,
+    samplePercent: 100,
+
+    fps: 0,
+    totalPoints: 0,
+    renderedPoints: 0,
+    rendererType: 'WebGL',
+
     set: (state) => set(state),
 }))

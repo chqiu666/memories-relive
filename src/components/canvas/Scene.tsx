@@ -5,6 +5,7 @@ import { OrbitControls } from '@react-three/drei'
 import { Suspense } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
+import { FpsMonitor } from './FpsMonitor'
 import memories from '@/data/memories.json'
 
 function SceneContent() {
@@ -17,6 +18,7 @@ function SceneContent() {
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={activeMemory.modelSrc} opacity={1} />
+            <FpsMonitor />
         </>
     )
 }

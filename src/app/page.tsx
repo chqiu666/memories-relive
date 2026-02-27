@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useStore } from '@/store'
 import { Gallery } from '@/components/dom/Gallery'
 import { UI } from '@/components/dom/UI'
+import { DebugPanel } from '@/components/dom/DebugPanel'
 import { AnimatePresence, motion } from 'framer-motion'
 
 const Scene = dynamic(() => import('@/components/canvas/Scene'), { ssr: false })
@@ -55,6 +56,9 @@ export default function Home() {
 
       {/* Detail mode UI */}
       <UI />
+
+      {/* Debug panel */}
+      <DebugPanel />
     </main>
   )
 }

@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useLoader, useFrame, useThree } from '@react-three/fiber'
 import { PLYLoader } from 'three-stdlib'
+import { useStore } from '@/store'
 
 import './MemoryShaderMaterial'
 
@@ -28,24 +29,60 @@ export function PointCloud({
     const materialRef = useRef<THREE.ShaderMaterial>(null)
     const { viewport } = useThree()
 
-    // Build a lightweight geometry that shares the heavy position/color buffers
-    const { processedGeometry, center } = useMemo(() => {
-        const geo = new THREE.BufferGeometry()
+    // Read sampling and point size from store
+    const samplePercent = useStore((s) => s.samplePercent)
+    const pointSize = useStore((s) => s.pointSize)
 
+    // Build geometry, applying sampling if needed
+    const { processedGeometry, center, totalCount, renderedCount } = useMemo(() => {
         const posAttr = geometry.getAttribute('position')
-        if (!posAttr) return { processedGeometry: geometry, center: [0, 0, 0] as [number, number, number] }
-
-        // Share heavy buffers (zero-copy)
-        geo.setAttribute('position', posAttr)
-
-        const colorAttr = geometry.getAttribute('color')
-        if (colorAttr) {
-            geo.setAttribute('color', colorAttr)
+        if (!posAttr) return {
+            processedGeometry: geometry,
+            center: [0, 0, 0] as [number, number, number],
+            totalCount: 0,
+            renderedCount: 0,
         }
 
-        // Lightweight custom attribute
-        const count = posAttr.count
-        const traceMask = new Float32Array(count) // defaults to 0
+        const totalCount = posAttr.count
+        const stride = samplePercent >= 100 ? 1 : Math.max(1, Math.round(100 / samplePercent))
+        const sampledCount = Math.ceil(totalCount / stride)
+
+        const geo = new THREE.BufferGeometry()
+
+        if (stride === 1) {
+            // Full resolution — share buffers (zero copy)
+            geo.setAttribute('position', posAttr)
+            const colorAttr = geometry.getAttribute('color')
+            if (colorAttr) geo.setAttribute('color', colorAttr)
+        } else {
+            // Subsampled — create new smaller buffers
+            const srcPos = posAttr.array as Float32Array
+            const newPos = new Float32Array(sampledCount * 3)
+
+            const colorAttr = geometry.getAttribute('color')
+            const srcColor = colorAttr ? (colorAttr.array as Float32Array) : null
+            const newColor = srcColor ? new Float32Array(sampledCount * 3) : null
+
+            let out = 0
+            for (let i = 0; i < totalCount; i += stride) {
+                newPos[out * 3] = srcPos[i * 3]
+                newPos[out * 3 + 1] = srcPos[i * 3 + 1]
+                newPos[out * 3 + 2] = srcPos[i * 3 + 2]
+                if (newColor && srcColor) {
+                    newColor[out * 3] = srcColor[i * 3]
+                    newColor[out * 3 + 1] = srcColor[i * 3 + 1]
+                    newColor[out * 3 + 2] = srcColor[i * 3 + 2]
+                }
+                out++
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(newPos, 3))
+            if (newColor) geo.setAttribute('color', new THREE.BufferAttribute(newColor, 3))
+        }
+
+        // Trace mask
+        const count = geo.getAttribute('position').count
+        const traceMask = new Float32Array(count)
         if (traceIndices.length > 0) {
             for (const idx of traceIndices) {
                 if (idx < count) traceMask[idx] = 1
@@ -53,7 +90,7 @@ export function PointCloud({
         }
         geo.setAttribute('aTraceMask', new THREE.BufferAttribute(traceMask, 1))
 
-        // Compute center offset without mutating the shared buffer
+        // Center offset
         geo.computeBoundingBox()
         const box = geo.boundingBox!
         const cx = (box.min.x + box.max.x) / 2
@@ -62,15 +99,23 @@ export function PointCloud({
 
         return {
             processedGeometry: geo,
-            center: [-cx, -cy, -cz] as [number, number, number]
+            center: [-cx, -cy, -cz] as [number, number, number],
+            totalCount,
+            renderedCount: count,
         }
-    }, [geometry, traceIndices])
+    }, [geometry, traceIndices, samplePercent])
+
+    // Update stats in store (in effect, not during render)
+    useEffect(() => {
+        useStore.getState().set({ totalPoints: totalCount, renderedPoints: renderedCount })
+    }, [totalCount, renderedCount])
 
     // Update uniforms every frame
     useFrame((state) => {
         if (materialRef.current) {
             materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime()
             materialRef.current.uniforms.uPixelRatio.value = state.gl.getPixelRatio()
+            materialRef.current.uniforms.uSize.value = pointSize
         }
     })
 
