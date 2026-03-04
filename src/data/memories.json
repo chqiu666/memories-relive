@@ -4,20 +4,58 @@
         "title": "gadget on wall",
         "description": "Point cloud scan of the making process at GSAPP.",
         "thumbnail": "/thumbnails/gsapp-making.jpg",
-        "modelSrc": "/models/GSAPP-making.ply"
+        "modelSrc": "/models/GSAPP-making.ply",
+        "tiles": [
+            {
+                "position": [
+                    -1.0046,
+                    0.0304,
+                    0.4799
+                ],
+                "label": "Tile 1"
+            }
+        ]
     },
     {
         "id": "concrete-surface",
         "title": "hurry pigeon",
         "description": "Detailed scan of a concrete surface texture.",
         "thumbnail": "/thumbnails/concrete-surface.jpg",
-        "modelSrc": "/models/concrete-surface.ply"
+        "modelSrc": "/models/concrete-surface.ply",
+        "tiles": [
+            {
+                "position": [
+                    -0.5978,
+                    0.5032,
+                    3.4214
+                ],
+                "label": "Tile 1"
+            },
+            {
+                "position": [
+                    0.0218,
+                    0.2702,
+                    4.1009
+                ],
+                "label": "Tile 2"
+            }
+        ]
     },
     {
         "id": "indoor-sofa",
         "title": "faded cat",
         "description": "Point cloud capture of an indoor sofa scene.",
         "thumbnail": "/thumbnails/indoor-sofa.jpg",
-        "modelSrc": "/models/indoor-sofa.ply"
+        "modelSrc": "/models/indoor-sofa.ply",
+        "tiles": [
+            {
+                "position": [
+                    -0.4425,
+                    0.6293,
+                    2.2977
+                ],
+                "label": "Tile 1"
+            }
+        ]
     }
 ]

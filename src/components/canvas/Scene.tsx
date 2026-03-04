@@ -8,6 +8,7 @@ import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
 import { CoordPicker } from './CoordPicker'
+import { InfoTile } from './InfoTile'
 import { FpsMonitor } from './FpsMonitor'
 import memories from '@/data/memories.json'
 
@@ -25,12 +26,21 @@ function SceneContent() {
     if (!activeMemory) return null
 
     const hlUrl = getHlUrl(activeMemory.modelSrc)
+    const tiles = (activeMemory as any).tiles as { position: [number, number, number]; label: string }[] | undefined
 
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={activeMemory.modelSrc} opacity={1} />
             <HighlightPointCloud url={hlUrl} />
+            {tiles?.map((tile, i) => (
+                <InfoTile
+                    key={`tile-${i}`}
+                    position={tile.position}
+                    label={tile.label}
+                    index={i}
+                />
+            ))}
             <EffectComposer>
                 <Bloom
                     intensity={0.4}
