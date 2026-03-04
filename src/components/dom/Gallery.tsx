@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { useStore } from '@/store'
 import memories from '@/data/memories.json'
 import gsap from 'gsap'
@@ -13,6 +13,7 @@ export function Gallery() {
     const { set } = useStore((s) => s)
     const gridRef = useRef<HTMLDivElement>(null)
     const [uploadOpen, setUploadOpen] = useState(false)
+    const popoverRef = useRef<HTMLDivElement>(null)
 
     useGSAP(() => {
         const tiles = gridRef.current?.querySelectorAll('.tile')
@@ -27,6 +28,29 @@ export function Gallery() {
             clearProps: 'all',
         })
     }, { scope: gridRef })
+
+    // GSAP animate popover in
+    useEffect(() => {
+        if (uploadOpen && popoverRef.current) {
+            gsap.fromTo(popoverRef.current,
+                { opacity: 0, scale: 0.9, y: 12 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: 'back.out(1.4)' }
+            )
+        }
+    }, [uploadOpen])
+
+    // Close popover with GSAP out animation
+    const closePopover = useCallback(() => {
+        if (popoverRef.current) {
+            gsap.to(popoverRef.current, {
+                opacity: 0, scale: 0.9, y: 12,
+                duration: 0.2, ease: 'power2.in',
+                onComplete: () => setUploadOpen(false),
+            })
+        } else {
+            setUploadOpen(false)
+        }
+    }, [])
 
     return (
         <div className="absolute inset-0 bg-[#0a0a0a] overflow-y-auto">
@@ -82,37 +106,54 @@ export function Gallery() {
                 </div>
             </div>
 
-            {/* Upload FAB */}
-            <button
-                onClick={() => setUploadOpen(true)}
-                className="fixed bottom-8 right-8 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-white/90 hover:bg-white text-[#0a0a0a] font-medium text-sm shadow-lg shadow-black/30 transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
-                <Upload size={18} strokeWidth={2} />
-                <span>Upload</span>
-            </button>
+            {/* Save Memory FAB + Popover */}
+            <div className="fixed bottom-8 right-8 z-40 flex flex-col items-end gap-3">
+                {/* Popover — appears above button */}
+                {uploadOpen && (
+                    <div
+                        ref={popoverRef}
+                        className="w-72 bg-[#1a1a1a] border border-white/10 rounded-xl p-5 shadow-2xl shadow-black/50 origin-bottom-right"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-white/90">Upload Photo</h3>
+                            <button
+                                onClick={closePopover}
+                                className="text-white/30 hover:text-white/70 transition-colors cursor-pointer"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
 
-            {/* Upload Modal */}
-            {uploadOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="relative bg-[#141414] border border-white/10 rounded-2xl w-full max-w-md p-8 shadow-2xl">
-                        {/* Close */}
-                        <button
-                            onClick={() => setUploadOpen(false)}
-                            className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
-                        >
-                            <X size={20} />
-                        </button>
-
-                        <h2 className="text-xl font-medium text-white/90 mb-6">上传照片</h2>
-
-                        {/* Placeholder drop zone */}
-                        <div className="border-2 border-dashed border-white/10 rounded-xl p-10 flex flex-col items-center gap-3 text-white/30">
-                            <Upload size={32} strokeWidth={1.5} />
-                            <p className="text-sm">拖拽或点击选择文件</p>
-                            <p className="text-xs text-white/20">功能开发中，敬请期待</p>
+                        <div className="border border-dashed border-white/10 rounded-lg p-6 flex flex-col items-center gap-2 text-white/30">
+                            <Upload size={24} strokeWidth={1.5} />
+                            <p className="text-xs">Drag or click to select</p>
+                            <p className="text-[10px] text-white/15">Coming soon</p>
                         </div>
                     </div>
-                </div>
+                )}
+
+                {/* Button */}
+                <button
+                    onClick={() => {
+                        if (uploadOpen) {
+                            closePopover()
+                        } else {
+                            setUploadOpen(true)
+                        }
+                    }}
+                    className="flex items-center gap-2 px-5 py-3 rounded-full bg-white/90 hover:bg-white text-[#0a0a0a] font-medium text-sm shadow-lg shadow-black/30 transition-all duration-300 hover:scale-105 cursor-pointer"
+                >
+                    <Upload size={18} strokeWidth={2} />
+                    <span>Save Memory</span>
+                </button>
+            </div>
+
+            {/* Click-away backdrop for popover */}
+            {uploadOpen && (
+                <div
+                    className="fixed inset-0 z-30"
+                    onClick={closePopover}
+                />
             )}
         </div>
     )
