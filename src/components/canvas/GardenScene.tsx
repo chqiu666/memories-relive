@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useRef, useState, useCallback } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { Canvas, useLoader, useFrame, useThree, ThreeEvent } from '@react-three/fiber'
+import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html } from '@react-three/drei'
 import { PLYLoader } from 'three-stdlib'
 import { useStore } from '@/store'
@@ -10,37 +10,27 @@ import memories from '@/data/memories.json'
 
 import '../canvas/MemoryShaderMaterial'
 
-/** Single draggable point cloud in the garden */
+/** Single point cloud in the garden — hardcoded 10% sampling */
 function GardenCloud({
     url,
-    initialPosition,
+    gardenPosition,
     memId,
     title,
-    onDragStart,
-    onDragEnd,
 }: {
     url: string
-    initialPosition: [number, number, number]
+    gardenPosition: [number, number, number]
     memId: string
     title: string
-    onDragStart: () => void
-    onDragEnd: () => void
 }) {
     const geometry = useLoader(PLYLoader, url)
     const materialRef = useRef<THREE.ShaderMaterial>(null)
-    const groupRef = useRef<THREE.Group>(null)
-    const [pos, setPos] = useState<[number, number, number]>(initialPosition)
-    const isDragging = useRef(false)
-    const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0))
-    const dragOffset = useRef(new THREE.Vector3())
-    const { camera, raycaster } = useThree()
 
     const { processedGeometry, center } = useMemo(() => {
         const posAttr = geometry.getAttribute('position')
         if (!posAttr) return { processedGeometry: geometry, center: [0, 0, 0] as [number, number, number] }
 
         const totalCount = posAttr.count
-        const stride = 10
+        const stride = 10 // 10% sampling
         const sampledCount = Math.ceil(totalCount / stride)
 
         const geo = new THREE.BufferGeometry()
@@ -67,9 +57,11 @@ function GardenCloud({
         geo.setAttribute('position', new THREE.BufferAttribute(newPos, 3))
         if (newColor) geo.setAttribute('color', new THREE.BufferAttribute(newColor, 3))
 
+        // Trace mask (all zeros — no trace in garden)
         const traceMask = new Float32Array(out)
         geo.setAttribute('aTraceMask', new THREE.BufferAttribute(traceMask, 1))
 
+        // Center offset
         geo.computeBoundingBox()
         const box = geo.boundingBox!
         const cx = (box.min.x + box.max.x) / 2
@@ -90,62 +82,12 @@ function GardenCloud({
         }
     })
 
-    const handleNavigate = useCallback(() => {
+    const handleClick = () => {
         useStore.getState().set({ viewMode: 'detail', activeMemoryId: memId })
-    }, [memId])
-
-    // Drag handlers
-    const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation()
-        isDragging.current = true
-        onDragStart()
-
-        // Set drag plane at the object's Y height
-        dragPlane.current.set(new THREE.Vector3(0, 1, 0), -pos[1])
-
-        // Calculate offset between intersection point and object position
-        const intersect = new THREE.Vector3()
-        raycaster.ray.intersectPlane(dragPlane.current, intersect)
-        dragOffset.current.set(pos[0] - intersect.x, 0, pos[2] - intersect.z)
-
-            // Capture pointer
-            ; (e.target as HTMLElement)?.setPointerCapture?.(e.nativeEvent.pointerId)
-    }, [pos, raycaster, onDragStart])
-
-    const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-        if (!isDragging.current) return
-        e.stopPropagation()
-
-        const intersect = new THREE.Vector3()
-        raycaster.ray.intersectPlane(dragPlane.current, intersect)
-
-        setPos([
-            intersect.x + dragOffset.current.x,
-            pos[1],
-            intersect.z + dragOffset.current.z,
-        ])
-    }, [pos, raycaster])
-
-    const handlePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
-        if (!isDragging.current) return
-        isDragging.current = false
-        onDragEnd()
-    }, [onDragEnd])
+    }
 
     return (
-        <group
-            ref={groupRef}
-            position={pos}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-        >
-            {/* Invisible drag hitbox — larger than the point cloud for easier grabbing */}
-            <mesh visible={false}>
-                <boxGeometry args={[5, 4, 5]} />
-                <meshBasicMaterial />
-            </mesh>
-
+        <group position={gardenPosition}>
             <points position={center}>
                 <primitive object={processedGeometry} />
                 {/* @ts-ignore */}
@@ -166,7 +108,7 @@ function GardenCloud({
                 zIndexRange={[50, 0]}
             >
                 <button
-                    onClick={handleNavigate}
+                    onClick={handleClick}
                     style={{
                         backdropFilter: 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)',
@@ -201,36 +143,24 @@ function GardenCloud({
     )
 }
 
-/** Tighter positions — closer together */
+/** Positions for each memory in the garden (spread out in 3D space) */
 const GARDEN_POSITIONS: [number, number, number][] = [
-    [-4, 0, -1],
-    [0, 0, 2],
-    [4, 0, -1],
+    [-8, 0, 0],
+    [0, 0, 0],
+    [8, 0, 0],
 ]
 
 function GardenContent() {
-    const controlsRef = useRef<any>(null)
-
-    const disableOrbit = useCallback(() => {
-        if (controlsRef.current) controlsRef.current.enabled = false
-    }, [])
-
-    const enableOrbit = useCallback(() => {
-        if (controlsRef.current) controlsRef.current.enabled = true
-    }, [])
-
     return (
         <>
-            <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.05} />
+            <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
             {memories.map((mem, i) => (
                 <GardenCloud
                     key={mem.id}
                     url={mem.modelSrc}
-                    initialPosition={GARDEN_POSITIONS[i] || [i * 5, 0, 0]}
+                    gardenPosition={GARDEN_POSITIONS[i] || [i * 10, 0, 0]}
                     memId={mem.id}
                     title={mem.title}
-                    onDragStart={disableOrbit}
-                    onDragEnd={enableOrbit}
                 />
             ))}
         </>
@@ -240,7 +170,7 @@ function GardenContent() {
 export default function GardenScene() {
     return (
         <Canvas
-            camera={{ position: [0, 5, 20], fov: 50, near: 0.1, far: 1000 }}
+            camera={{ position: [0, 5, 25], fov: 50, near: 0.1, far: 1000 }}
             style={{ background: '#0a0a0a' }}
             dpr={[1, 2]}
         >
