@@ -59,7 +59,10 @@ export function Gallery() {
 
                             {/* Label */}
                             <div className="absolute bottom-0 left-0 right-0 p-5">
-                                <h2 className="text-lg font-light tracking-wide text-white/90 group-hover:text-white transition-colors">
+                                <h2
+                                    className="text-lg font-medium tracking-wide text-white/90 group-hover:text-white transition-colors"
+                                    style={{ fontFamily: 'var(--font-space-grotesk), sans-serif' }}
+                                >
                                     {mem.title}
                                 </h2>
                                 <div className="flex items-center gap-2 mt-2">
