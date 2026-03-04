@@ -110,6 +110,15 @@ export function PointCloud({
         useStore.getState().set({ totalPoints: totalCount, renderedPoints: renderedCount })
     }, [totalCount, renderedCount])
 
+    // Dispose sampled geometry on unmount or change
+    useEffect(() => {
+        return () => {
+            if (processedGeometry !== geometry) {
+                processedGeometry.dispose()
+            }
+        }
+    }, [processedGeometry, geometry])
+
     // Update uniforms every frame
     useFrame((state) => {
         if (materialRef.current) {

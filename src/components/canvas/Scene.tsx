@@ -2,6 +2,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { Suspense } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
@@ -29,6 +30,14 @@ function SceneContent() {
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={activeMemory.modelSrc} opacity={1} />
             <HighlightPointCloud url={hlUrl} />
+            <EffectComposer>
+                <Bloom
+                    intensity={0.4}
+                    luminanceThreshold={0.6}
+                    luminanceSmoothing={0.4}
+                    mipmapBlur
+                />
+            </EffectComposer>
             <FpsMonitor />
         </>
     )

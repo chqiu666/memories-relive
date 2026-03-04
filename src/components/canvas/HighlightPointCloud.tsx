@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useLoader, useFrame } from '@react-three/fiber'
 import { PLYLoader } from 'three-stdlib'
@@ -26,7 +26,6 @@ export function HighlightPointCloud({
     const samplePercent = useStore((s) => s.samplePercent)
     const pointSize = useStore((s) => s.pointSize)
 
-    // Effective sample rate — either 100% or follow main
     const effectiveSample = hlFullSample ? 100 : samplePercent
 
     const { processedGeometry, center } = useMemo(() => {
@@ -68,7 +67,7 @@ export function HighlightPointCloud({
             if (newColor) geo.setAttribute('color', new THREE.BufferAttribute(newColor, 3))
         }
 
-        // Compute center offset (same as base model since coords are identical)
+        // Compute center offset from own bounding box
         geo.computeBoundingBox()
         const box = geo.boundingBox!
         const cx = (box.min.x + box.max.x) / 2
@@ -80,6 +79,15 @@ export function HighlightPointCloud({
             center: [-cx, -cy, -cz] as [number, number, number],
         }
     }, [geometry, effectiveSample])
+
+    // Dispose sampled geometry on unmount or change
+    useEffect(() => {
+        return () => {
+            if (processedGeometry !== geometry) {
+                processedGeometry.dispose()
+            }
+        }
+    }, [processedGeometry, geometry])
 
     // Update uniforms every frame
     useFrame((state) => {
@@ -110,4 +118,3 @@ export function HighlightPointCloud({
         </group>
     )
 }
-

@@ -3,56 +3,46 @@ import { shaderMaterial } from '@react-three/drei'
 import { extend } from '@react-three/fiber'
 
 const HighlightShaderMaterial = shaderMaterial(
-    {
-        uTime: 0,
-        uPixelRatio: 1,
-        uSize: 0.5,
-        uBrightness: 2.5,       // glow multiplier
-        uWaveAmplitude: 0.03,   // how much points float
-        uWaveSpeed: 1.2,        // animation speed
-    },
+  {
+    uTime: 0,
+    uPixelRatio: 1,
+    uSize: 0.5,
+    uBrightness: 1.6,       // color boost (not pure white — keeps original hue)
+    uSweepSpeed: 0.8,       // how fast the light band sweeps
+    uSweepWidth: 2.0,       // width of the sweep band
+  },
   // ─── Vertex Shader ───
+  // NO position displacement — highlight points are locked to base model
   /* glsl */ `
     uniform float uTime;
     uniform float uPixelRatio;
     uniform float uSize;
-    uniform float uWaveAmplitude;
-    uniform float uWaveSpeed;
 
     varying vec3 vColor;
-    varying float vDepth;
+    varying vec3 vWorldPos;
 
     void main() {
       vColor = color;
+      vWorldPos = position;
 
-      vec3 pos = position;
-
-      // Smooth sine-wave vertical float based on world position
-      float wave = sin(uTime * uWaveSpeed + pos.x * 2.0 + pos.z * 1.5) * uWaveAmplitude;
-      wave += sin(uTime * uWaveSpeed * 0.7 + pos.z * 3.0) * uWaveAmplitude * 0.5;
-      pos.y += wave;
-
-      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
-      // ── Anti-flicker depth bias ──
-      // Pull highlight layer slightly toward camera in clip space
-      // to prevent z-fighting with the base model without disabling depth
-      gl_Position.z -= 0.005 * gl_Position.w;
-
-      vDepth = -mvPosition.z;
-
-      // Size attenuation
+      // Size attenuation (match base model)
       gl_PointSize = uSize * uPixelRatio * (150.0 / -mvPosition.z);
       gl_PointSize = max(gl_PointSize, 1.5);
     }
   `,
   // ─── Fragment Shader ───
+  // iOS-style light sweep: a bright band sweeps across the surface over time
   /* glsl */ `
+    uniform float uTime;
     uniform float uBrightness;
+    uniform float uSweepSpeed;
+    uniform float uSweepWidth;
 
     varying vec3 vColor;
-    varying float vDepth;
+    varying vec3 vWorldPos;
 
     void main() {
       // Circular point shape
@@ -63,10 +53,26 @@ const HighlightShaderMaterial = shaderMaterial(
       float delta = fwidth(r);
       float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r);
 
-      // Self-illumination: boost vertex color for glow
-      vec3 glowColor = vColor * uBrightness;
+      // Light sweep: a band of brightness that moves across the model
+      // Uses world-space diagonal (x + z) for sweep direction
+      float sweepPos = vWorldPos.x + vWorldPos.z;
+      float sweepCenter = uTime * uSweepSpeed;
+      float sweepDist = abs(sweepPos - sweepCenter);
 
-      // Soft edge falloff for additive blending
+      // Wrap sweep using mod so it repeats smoothly
+      float period = 20.0;
+      float wrappedCenter = mod(sweepCenter, period) - period * 0.5;
+      sweepDist = abs(sweepPos - wrappedCenter);
+
+      // Smooth intensity falloff from sweep center
+      float sweepIntensity = smoothstep(uSweepWidth, 0.0, sweepDist);
+
+      // Base highlight: original color * brightness
+      // Sweep adds extra glow on top
+      float totalBright = uBrightness + sweepIntensity * 1.5;
+      vec3 glowColor = vColor * totalBright;
+
+      // Soft edge for additive blending
       float edgeFade = 1.0 - smoothstep(0.3, 1.0, r);
       alpha *= edgeFade;
 
@@ -78,11 +84,11 @@ const HighlightShaderMaterial = shaderMaterial(
 extend({ HighlightShaderMaterial })
 
 declare global {
-    namespace JSX {
-        interface IntrinsicElements {
-            highlightShaderMaterial: any
-        }
+  namespace JSX {
+    interface IntrinsicElements {
+      highlightShaderMaterial: any
     }
+  }
 }
 
 export { HighlightShaderMaterial }
