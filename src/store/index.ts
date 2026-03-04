@@ -23,6 +23,9 @@ interface DebugState {
     raycastMode: boolean
     pickedCoord: [number, number, number] | null
 
+    // Info tiles
+    activeTileId: string | null
+
     set: (state: Partial<DebugState>) => void
 }
 
@@ -43,6 +46,8 @@ export const useStore = create<DebugState>((set) => ({
 
     raycastMode: false,
     pickedCoord: null,
+
+    activeTileId: null,
 
     set: (state) => set(state),
 }))

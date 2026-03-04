@@ -26,7 +26,7 @@ function SceneContent() {
     if (!activeMemory) return null
 
     const hlUrl = getHlUrl(activeMemory.modelSrc)
-    const tiles = (activeMemory as any).tiles as { position: [number, number, number]; label: string }[] | undefined
+    const tiles = (activeMemory as any).tiles as { position: [number, number, number]; label: string; description?: string }[] | undefined
 
     return (
         <>
@@ -35,10 +35,11 @@ function SceneContent() {
             <HighlightPointCloud url={hlUrl} />
             {tiles?.map((tile, i) => (
                 <InfoTile
-                    key={`tile-${i}`}
+                    key={`${activeMemory.id}-tile-${i}`}
+                    id={`${activeMemory.id}-tile-${i}`}
                     position={tile.position}
                     label={tile.label}
-                    index={i}
+                    description={tile.description}
                 />
             ))}
             <EffectComposer>

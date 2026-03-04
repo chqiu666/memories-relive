@@ -1,148 +1,196 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import * as THREE from 'three'
 import { Html } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useStore } from '@/store'
 
 interface InfoTileProps {
+    /** Unique ID for this tile */
+    id: string
     /** World-space position where this tile is anchored */
     position: [number, number, number]
     /** Short label for the tile */
     label: string
-    /** Index for styling variation */
-    index?: number
+    /** Description text shown when expanded */
+    description?: string
 }
 
 /**
- * A 3D-anchored info tile that:
- * - Sticks to a specific 3D point on the point cloud
- * - Fades/scales based on camera facing direction (visible from front, hidden from behind)
- * - Auto-expands toward available screen space
- * - Glass-morphic style matching the debug ⓘ button
+ * A 3D-anchored info tile:
+ * - Fixed screen size (no distanceFactor → doesn't scale with zoom)
+ * - Click to expand / click outside or another tile to collapse
+ * - Scrollable description content
+ * - Dot-product visibility (front=show, back=hide)
+ * - Edge-aware expansion direction
+ * - Glass-morphic style with backdrop-blur
  */
-export function InfoTile({ position, label, index = 0 }: InfoTileProps) {
+export function InfoTile({ id, position, label, description }: InfoTileProps) {
     const groupRef = useRef<THREE.Group>(null)
-    const [hovered, setHovered] = useState(false)
-    const [visibility, setVisibility] = useState(1)
-    const [expandDir, setExpandDir] = useState<'right' | 'left' | 'up' | 'down'>('right')
+    const visRef = useRef(1)
+    const dirRef = useRef<'right' | 'left'>('right')
+    const containerRef = useRef<HTMLDivElement>(null)
     const { camera, size } = useThree()
 
-    // Every frame: compute visibility (dot product) and best expansion direction
+    const activeTileId = useStore((s) => s.activeTileId)
+    const isExpanded = activeTileId === id
+
+    const toggleExpand = useCallback(() => {
+        const store = useStore.getState()
+        store.set({ activeTileId: store.activeTileId === id ? null : id })
+    }, [id])
+
+    // Close when clicking outside
+    useEffect(() => {
+        if (!isExpanded) return
+
+        const handleOutsideClick = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                useStore.getState().set({ activeTileId: null })
+            }
+        }
+
+        // Delay to avoid immediate close from the click that opened it
+        const timer = setTimeout(() => {
+            document.addEventListener('pointerdown', handleOutsideClick)
+        }, 50)
+
+        return () => {
+            clearTimeout(timer)
+            document.removeEventListener('pointerdown', handleOutsideClick)
+        }
+    }, [isExpanded])
+
+    // Per-frame: visibility + expansion direction
     useFrame(() => {
         if (!groupRef.current) return
 
-        // Get world position of the tile
         const tileWorldPos = new THREE.Vector3(...position)
-
-        // Camera to tile direction
         const camPos = camera.position.clone()
         const toTile = tileWorldPos.clone().sub(camPos).normalize()
-
-        // Camera forward direction
         const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
-
-        // Dot product: 1 = directly ahead, -1 = behind
         const dot = camForward.dot(toTile)
 
-        // Smooth visibility: fully visible above 0.3, fading between 0 and 0.3, hidden below 0
-        const newVis = THREE.MathUtils.smoothstep(dot, 0.0, 0.5)
-        setVisibility(newVis)
+        visRef.current = THREE.MathUtils.smoothstep(dot, 0.0, 0.5)
 
-        // Project tile position to screen to determine expansion direction
+        // Only update direction at edge boundaries
         const projected = tileWorldPos.clone().project(camera)
         const screenX = (projected.x * 0.5 + 0.5) * size.width
-        const screenY = (-projected.y * 0.5 + 0.5) * size.height
+        const cur = dirRef.current
+        const tileW = 300
 
-        // Choose direction based on available space
-        const midX = size.width / 2
-        const midY = size.height / 2
-
-        // Primary: horizontal, secondary: vertical
-        if (screenX < midX * 0.6) {
-            setExpandDir('right')
-        } else if (screenX > midX * 1.4) {
-            setExpandDir('left')
-        } else if (screenY < midY) {
-            setExpandDir('down')
-        } else {
-            setExpandDir('up')
+        if (cur === 'right' && size.width - screenX < tileW + 80) {
+            dirRef.current = 'left'
+        } else if (cur === 'left' && screenX < tileW + 80) {
+            dirRef.current = 'right'
         }
     })
 
-    // Don't render at all when fully hidden
-    if (visibility < 0.01) return null
+    const vis = visRef.current
+    if (vis < 0.01) return null
 
-    // Transform classes based on expand direction
-    const expandOffset = {
-        right: 'left-5 top-1/2 -translate-y-1/2',
-        left: 'right-5 top-1/2 -translate-y-1/2',
-        down: 'top-5 left-1/2 -translate-x-1/2',
-        up: 'bottom-5 left-1/2 -translate-x-1/2',
-    }
-
-    // Line connector direction
-    const lineClass = {
-        right: 'w-4 h-px left-0 top-1/2 -translate-x-full -translate-y-1/2',
-        left: 'w-4 h-px right-0 top-1/2 translate-x-full -translate-y-1/2',
-        down: 'h-4 w-px top-0 left-1/2 -translate-y-full -translate-x-1/2',
-        up: 'h-4 w-px bottom-0 left-1/2 translate-y-full -translate-x-1/2',
-    }
+    const dir = dirRef.current
 
     return (
         <group ref={groupRef} position={position}>
-            {/* Small dot marker at the anchor point */}
+            {/* Dot marker */}
             <mesh>
                 <sphereGeometry args={[0.015, 8, 8]} />
-                <meshBasicMaterial
-                    color="#ffffff"
-                    transparent
-                    opacity={visibility * 0.6}
-                />
+                <meshBasicMaterial color="#ffffff" transparent opacity={vis * 0.6} />
             </mesh>
 
             <Html
                 center
-                distanceFactor={8}
+                // No distanceFactor → constant screen size
                 style={{
-                    pointerEvents: visibility > 0.3 ? 'auto' : 'none',
-                    opacity: visibility,
-                    transform: `scale(${0.5 + visibility * 0.5})`,
-                    transition: 'opacity 0.15s ease, transform 0.15s ease',
+                    pointerEvents: vis > 0.3 ? 'auto' : 'none',
+                    opacity: vis,
+                    transition: 'opacity 0.2s ease',
                 }}
                 zIndexRange={[50, 0]}
             >
-                <div className="relative" style={{ width: 0, height: 0 }}>
+                <div
+                    ref={containerRef}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexDirection: dir === 'right' ? 'row' : 'row-reverse',
+                        gap: '0px',
+                    }}
+                >
                     {/* Connector line */}
-                    <div
-                        className={`absolute bg-white/30 ${lineClass[expandDir]}`}
-                    />
+                    <div style={{
+                        width: '16px',
+                        height: '1px',
+                        backgroundColor: 'rgba(255,255,255,0.25)',
+                        flexShrink: 0,
+                    }} />
 
-                    {/* The glass tile */}
+                    {/* Tile card */}
                     <div
-                        className={`absolute ${expandOffset[expandDir]} whitespace-nowrap`}
-                        onMouseEnter={() => setHovered(true)}
-                        onMouseLeave={() => setHovered(false)}
+                        onClick={toggleExpand}
+                        style={{
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            background: isExpanded
+                                ? 'rgba(20, 20, 20, 0.9)'
+                                : 'rgba(20, 20, 20, 0.75)',
+                            border: `1px solid ${isExpanded
+                                ? 'rgba(255,255,255,0.2)'
+                                : 'rgba(255,255,255,0.08)'}`,
+                            borderRadius: '8px',
+                            boxShadow: isExpanded
+                                ? '0 8px 32px rgba(0,0,0,0.5)'
+                                : '0 2px 8px rgba(0,0,0,0.3)',
+                            padding: isExpanded ? '12px 16px' : '5px 10px',
+                            width: isExpanded ? '280px' : 'auto',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            userSelect: 'none' as const,
+                        }}
                     >
-                        <div
-                            className={`
-                                backdrop-blur-md border rounded-lg shadow-xl
-                                transition-all duration-300 ease-out cursor-default
-                                ${hovered
-                                    ? 'bg-white/15 border-white/25 shadow-white/5'
-                                    : 'bg-white/5 border-white/10'
-                                }
-                            `}
-                            style={{ padding: hovered ? '8px 14px' : '6px 12px' }}
-                        >
-                            <span className={`
-                                text-white/80 font-medium tracking-wide
-                                transition-all duration-300
-                                ${hovered ? 'text-xs text-white/90' : 'text-[10px]'}
-                            `}>
-                                {label}
-                            </span>
-                        </div>
+                        {/* Label */}
+                        <span style={{
+                            display: 'block',
+                            color: isExpanded
+                                ? 'rgba(255,255,255,0.95)'
+                                : 'rgba(255,255,255,0.75)',
+                            fontWeight: 600,
+                            letterSpacing: '0.03em',
+                            fontSize: isExpanded ? '13px' : '11px',
+                            whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                            transition: 'all 0.3s ease',
+                        }}>
+                            {label}
+                        </span>
+
+                        {/* Description — expanded only */}
+                        {description && (
+                            <div style={{
+                                overflow: 'hidden',
+                                maxHeight: isExpanded ? '300px' : '0px',
+                                opacity: isExpanded ? 1 : 0,
+                                transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease',
+                                marginTop: isExpanded ? '8px' : '0px',
+                            }}>
+                                <div style={{
+                                    maxHeight: '120px',
+                                    overflowY: 'auto',
+                                    paddingRight: '4px',
+                                }}>
+                                    <p style={{
+                                        fontSize: '11px',
+                                        lineHeight: '1.7',
+                                        color: 'rgba(255,255,255,0.5)',
+                                        margin: 0,
+                                    }}>
+                                        {description}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </Html>

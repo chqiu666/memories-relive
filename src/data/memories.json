@@ -12,7 +12,8 @@
                     0.0304,
                     0.4799
                 ],
-                "label": "Tile 1"
+                "label": "Shattered Plaster",
+                "description": "The plaster material on the workbench physically collapsed under external force during the fabrication process. The scattered debris and fractured cross-sections constitute the inevitable residue during the materialization of a concept."
             }
         ]
     },
@@ -29,7 +30,8 @@
                     0.5032,
                     3.4214
                 ],
-                "label": "Tile 1"
+                "label": "Pigeon Footprints",
+                "description": "A set of tiny bird footprints was left on the city sidewalk while the concrete was not yet fully cured. It permanently records the physical trajectory of a bird's brief stroll across the urban surface."
             },
             {
                 "position": [
@@ -37,7 +39,8 @@
                     0.2702,
                     4.1009
                 ],
-                "label": "Tile 2"
+                "label": "Carved Text",
+                "description": "Anthropogenic linear grooves were carved into the concrete surface, forming the names \"Ale + ANYA\" and a date. This carving, driven by clear subjective intent, forcibly embeds a private emotional text into the city's public infrastructure."
             }
         ]
     },
@@ -54,7 +57,8 @@
                     0.6293,
                     2.2977
                 ],
-                "label": "Tile 1"
+                "label": "Cat Scratches",
+                "description": "The leather fabric of the sofa has undergone long-term cutting and friction, leaving behind high-frequency, irregular reticulated scratches. This stems from the repeated stretching and scratching of a domestic cat. It is an accumulated physical proof of long-term biological companionship and daily behavior."
             }
         ]
     }
