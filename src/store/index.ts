@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 interface DebugState {
     // View state
-    viewMode: 'grid' | 'detail'
+    viewMode: 'grid' | 'detail' | 'garden'
     activeMemoryId: string | null
 
     // Debug panel

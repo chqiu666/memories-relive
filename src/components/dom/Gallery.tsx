@@ -5,7 +5,7 @@ import { useStore } from '@/store'
 import memories from '@/data/memories.json'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, Trees } from 'lucide-react'
 
 gsap.registerPlugin(useGSAP)
 
@@ -145,6 +145,17 @@ export function Gallery() {
                 >
                     <Upload size={18} strokeWidth={2} />
                     <span>Save Memory</span>
+                </button>
+            </div>
+
+            {/* Memory Garden toggle — bottom left */}
+            <div className="fixed bottom-8 left-8 z-40">
+                <button
+                    onClick={() => set({ viewMode: 'garden' })}
+                    className="flex items-center gap-2 text-white/60 hover:text-white transition-all duration-300 bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-white/10 cursor-pointer"
+                >
+                    <Trees size={16} strokeWidth={1.5} />
+                    <span className="text-sm tracking-wider">Memory Garden</span>
                 </button>
             </div>
 
