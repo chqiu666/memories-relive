@@ -5,7 +5,7 @@ import { useStore } from '@/store'
 import memories from '@/data/memories.json'
 
 export function Gallery() {
-    const { set } = useStore((s) => s)
+    const { customNames, set } = useStore((s) => s)
 
     return (
         <div className="absolute inset-0 z-20 bg-[#0a0a0a] overflow-y-auto">
@@ -44,7 +44,7 @@ export function Gallery() {
                             {/* Label */}
                             <div className="absolute bottom-0 left-0 right-0 p-5">
                                 <h2 className="text-lg font-light tracking-widest text-white/90 uppercase group-hover:text-white transition-colors">
-                                    {mem.title}
+                                    {customNames[mem.id] || mem.title}
                                 </h2>
                                 <p className="text-xs text-white/40 mt-1 tracking-wide group-hover:text-white/60 transition-colors">
                                     {mem.description}
