@@ -27,7 +27,7 @@ export function Gallery() {
     }, { scope: gridRef })
 
     return (
-        <div className="absolute inset-0 z-20 bg-[#0a0a0a] overflow-y-auto">
+        <div className="absolute inset-0 bg-[#0a0a0a] overflow-y-auto">
             {/* Header */}
             <header className="sticky top-0 z-30 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 px-8 py-6">
                 <h1
