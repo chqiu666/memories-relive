@@ -2,7 +2,7 @@
 
 import { useStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Info, X } from 'lucide-react'
+import { Info, X, Crosshair, Clipboard } from 'lucide-react'
 
 export function DebugPanel() {
     const {
@@ -14,6 +14,8 @@ export function DebugPanel() {
         pointSize,
         samplePercent,
         hlFullSample,
+        raycastMode,
+        pickedCoord,
         set,
     } = useStore((s) => s)
 
@@ -66,7 +68,7 @@ export function DebugPanel() {
                         </div>
 
                         {/* Controls */}
-                        <div className="px-4 py-3 space-y-4">
+                        <div className="px-4 py-3 space-y-4 border-b border-white/5">
                             {/* Sampling slider */}
                             <SliderControl
                                 label="Sample %"
@@ -100,6 +102,44 @@ export function DebugPanel() {
                                         }`} />
                                 </button>
                             </div>
+                        </div>
+
+                        {/* Coord Picker */}
+                        <div className="px-4 py-3 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                    <Crosshair size={12} className="text-white/40" />
+                                    <span className="text-[11px] text-white/40 uppercase tracking-wide">Coord Picker</span>
+                                </div>
+                                <button
+                                    onClick={() => set({ raycastMode: !raycastMode, pickedCoord: null })}
+                                    className={`w-8 h-4 rounded-full transition-colors duration-200 cursor-pointer ${raycastMode ? 'bg-blue-500/60' : 'bg-white/10'
+                                        }`}
+                                >
+                                    <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${raycastMode ? 'translate-x-4.5' : 'translate-x-0.5'
+                                        }`} />
+                                </button>
+                            </div>
+
+                            {raycastMode && (
+                                <div className="space-y-1.5">
+                                    <p className="text-[10px] text-blue-400/60">Click on point cloud to pick coordinates</p>
+                                    {pickedCoord && (
+                                        <button
+                                            onClick={() => {
+                                                const s = `[${pickedCoord[0]}, ${pickedCoord[1]}, ${pickedCoord[2]}]`
+                                                navigator.clipboard.writeText(s)
+                                            }}
+                                            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer group"
+                                        >
+                                            <span className="text-[11px] font-mono text-white/70">
+                                                [{pickedCoord[0]}, {pickedCoord[1]}, {pickedCoord[2]}]
+                                            </span>
+                                            <Clipboard size={12} className="text-white/30 group-hover:text-white/70 transition-colors flex-shrink-0" />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}

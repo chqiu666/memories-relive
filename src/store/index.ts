@@ -19,6 +19,10 @@ interface DebugState {
     renderedPoints: number
     rendererType: string   // 'WebGPU' or 'WebGL'
 
+    // Raycaster coord picker
+    raycastMode: boolean
+    pickedCoord: [number, number, number] | null
+
     set: (state: Partial<DebugState>) => void
 }
 
@@ -36,6 +40,9 @@ export const useStore = create<DebugState>((set) => ({
     totalPoints: 0,
     renderedPoints: 0,
     rendererType: 'WebGL',
+
+    raycastMode: false,
+    pickedCoord: null,
 
     set: (state) => set(state),
 }))

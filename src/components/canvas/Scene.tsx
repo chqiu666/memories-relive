@@ -7,6 +7,7 @@ import { Suspense } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
+import { CoordPicker } from './CoordPicker'
 import { FpsMonitor } from './FpsMonitor'
 import memories from '@/data/memories.json'
 
@@ -38,6 +39,7 @@ function SceneContent() {
                     mipmapBlur
                 />
             </EffectComposer>
+            <CoordPicker />
             <FpsMonitor />
         </>
     )
