@@ -7,102 +7,100 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useStore } from '@/store'
 
 interface InfoTileProps {
-    /** Unique ID for this tile */
     id: string
-    /** World-space position where this tile is anchored */
     position: [number, number, number]
-    /** Short label for the tile */
     label: string
-    /** Description text shown when expanded */
     description?: string
 }
 
+// Offset distance from anchor point to tile (px)
+const LINE_LENGTH = 60
+
 /**
- * A 3D-anchored info tile:
- * - Fixed screen size (no distanceFactor → doesn't scale with zoom)
- * - Click to expand / click outside or another tile to collapse
- * - Scrollable description content
- * - Dot-product visibility (front=show, back=hide)
- * - Edge-aware expansion direction
- * - Glass-morphic style with backdrop-blur
+ * 3D-anchored info tile with:
+ * - Corner expansion (upper-left default, edge-aware)
+ * - Connector line with distance from anchor
+ * - Portrait ratio card (height > width)
+ * - Click to expand, scrollable content (wheel captured)
+ * - Glass-morphic backdrop-blur
+ * - Constant screen size
  */
 export function InfoTile({ id, position, label, description }: InfoTileProps) {
     const groupRef = useRef<THREE.Group>(null)
     const visRef = useRef(1)
-    const dirRef = useRef<'right' | 'left'>('right')
-    const containerRef = useRef<HTMLDivElement>(null)
+    const scrollRef = useRef<HTMLDivElement>(null)
     const { camera, size } = useThree()
 
     const activeTileId = useStore((s) => s.activeTileId)
     const isExpanded = activeTileId === id
 
-    const toggleExpand = useCallback(() => {
+    const toggleExpand = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation()
         const store = useStore.getState()
         store.set({ activeTileId: store.activeTileId === id ? null : id })
     }, [id])
 
-    // Close when clicking outside
+    // Close on outside click
     useEffect(() => {
         if (!isExpanded) return
-
-        const handleOutsideClick = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        const handle = (e: MouseEvent) => {
+            const el = scrollRef.current?.closest('[data-tile-root]')
+            if (el && !el.contains(e.target as Node)) {
                 useStore.getState().set({ activeTileId: null })
             }
         }
-
-        // Delay to avoid immediate close from the click that opened it
-        const timer = setTimeout(() => {
-            document.addEventListener('pointerdown', handleOutsideClick)
-        }, 50)
-
-        return () => {
-            clearTimeout(timer)
-            document.removeEventListener('pointerdown', handleOutsideClick)
-        }
+        const timer = setTimeout(() => document.addEventListener('pointerdown', handle), 60)
+        return () => { clearTimeout(timer); document.removeEventListener('pointerdown', handle) }
     }, [isExpanded])
 
-    // Per-frame: visibility + expansion direction
+    // Capture wheel inside expanded tile to prevent 3D zoom
+    useEffect(() => {
+        const el = scrollRef.current
+        if (!el || !isExpanded) return
+        const stop = (e: WheelEvent) => e.stopPropagation()
+        el.addEventListener('wheel', stop, { passive: false })
+        return () => el.removeEventListener('wheel', stop)
+    }, [isExpanded])
+
+    // Per-frame visibility
     useFrame(() => {
         if (!groupRef.current) return
-
         const tileWorldPos = new THREE.Vector3(...position)
-        const camPos = camera.position.clone()
-        const toTile = tileWorldPos.clone().sub(camPos).normalize()
-        const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
-        const dot = camForward.dot(toTile)
-
-        visRef.current = THREE.MathUtils.smoothstep(dot, 0.0, 0.5)
-
-        // Only update direction at edge boundaries
-        const projected = tileWorldPos.clone().project(camera)
-        const screenX = (projected.x * 0.5 + 0.5) * size.width
-        const cur = dirRef.current
-        const tileW = 300
-
-        if (cur === 'right' && size.width - screenX < tileW + 80) {
-            dirRef.current = 'left'
-        } else if (cur === 'left' && screenX < tileW + 80) {
-            dirRef.current = 'right'
-        }
+        const toTile = tileWorldPos.clone().sub(camera.position).normalize()
+        const camFwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion)
+        visRef.current = THREE.MathUtils.smoothstep(camFwd.dot(toTile), 0.0, 0.5)
     })
 
     const vis = visRef.current
     if (vis < 0.01) return null
 
-    const dir = dirRef.current
+    // Determine corner direction based on screen position
+    const projected = new THREE.Vector3(...position).project(camera)
+    const sx = (projected.x * 0.5 + 0.5) * size.width
+    const sy = (-projected.y * 0.5 + 0.5) * size.height
+
+    // Pick corner: prefer upper-left, but flip if too close to edges
+    const goLeft = sx > 200
+    const goUp = sy > 200
+
+    // Offset in px from anchor point
+    const dx = goLeft ? -LINE_LENGTH : LINE_LENGTH
+    const dy = goUp ? -LINE_LENGTH : LINE_LENGTH
+
+    // Diagonal angle for the connector line
+    const angle = Math.atan2(dy, dx)
+    const lineLen = Math.sqrt(dx * dx + dy * dy)
 
     return (
         <group ref={groupRef} position={position}>
-            {/* Dot marker */}
+            {/* Anchor dot */}
             <mesh>
-                <sphereGeometry args={[0.015, 8, 8]} />
-                <meshBasicMaterial color="#ffffff" transparent opacity={vis * 0.6} />
+                <sphereGeometry args={[0.012, 8, 8]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={vis * 0.5} />
             </mesh>
 
             <Html
                 center
-                // No distanceFactor → constant screen size
                 style={{
                     pointerEvents: vis > 0.3 ? 'auto' : 'none',
                     opacity: vis,
@@ -111,86 +109,107 @@ export function InfoTile({ id, position, label, description }: InfoTileProps) {
                 zIndexRange={[50, 0]}
             >
                 <div
-                    ref={containerRef}
-                    onClick={(e) => e.stopPropagation()}
+                    data-tile-root
                     style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexDirection: dir === 'right' ? 'row' : 'row-reverse',
-                        gap: '0px',
+                        position: 'relative',
+                        width: 0,
+                        height: 0,
                     }}
                 >
-                    {/* Connector line */}
+                    {/* Diagonal connector line */}
                     <div style={{
-                        width: '16px',
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        width: `${lineLen}px`,
                         height: '1px',
-                        backgroundColor: 'rgba(255,255,255,0.25)',
-                        flexShrink: 0,
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        transformOrigin: '0 0',
+                        transform: `rotate(${angle}rad)`,
+                        pointerEvents: 'none',
                     }} />
 
-                    {/* Tile card */}
+                    {/* Tile card — offset at end of connector */}
                     <div
-                        onClick={toggleExpand}
                         style={{
-                            backdropFilter: 'blur(12px)',
-                            WebkitBackdropFilter: 'blur(12px)',
-                            background: isExpanded
-                                ? 'rgba(20, 20, 20, 0.9)'
-                                : 'rgba(20, 20, 20, 0.75)',
-                            border: `1px solid ${isExpanded
-                                ? 'rgba(255,255,255,0.2)'
-                                : 'rgba(255,255,255,0.08)'}`,
-                            borderRadius: '8px',
-                            boxShadow: isExpanded
-                                ? '0 8px 32px rgba(0,0,0,0.5)'
-                                : '0 2px 8px rgba(0,0,0,0.3)',
-                            padding: isExpanded ? '12px 16px' : '5px 10px',
-                            width: isExpanded ? '280px' : 'auto',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            userSelect: 'none' as const,
+                            position: 'absolute',
+                            left: `${dx}px`,
+                            top: `${dy}px`,
+                            // Align tile corner to line endpoint
+                            transform: `translate(${goLeft ? '-100%' : '0'}, ${goUp ? '-100%' : '0'})`,
+                            transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1), padding 0.3s ease',
                         }}
                     >
-                        {/* Label */}
-                        <span style={{
-                            display: 'block',
-                            color: isExpanded
-                                ? 'rgba(255,255,255,0.95)'
-                                : 'rgba(255,255,255,0.75)',
-                            fontWeight: 600,
-                            letterSpacing: '0.03em',
-                            fontSize: isExpanded ? '13px' : '11px',
-                            whiteSpace: isExpanded ? 'normal' : 'nowrap',
-                            transition: 'all 0.3s ease',
-                        }}>
-                            {label}
-                        </span>
-
-                        {/* Description — expanded only */}
-                        {description && (
-                            <div style={{
-                                overflow: 'hidden',
-                                maxHeight: isExpanded ? '300px' : '0px',
-                                opacity: isExpanded ? 1 : 0,
-                                transition: 'max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease',
-                                marginTop: isExpanded ? '8px' : '0px',
+                        <div
+                            onClick={toggleExpand}
+                            style={{
+                                backdropFilter: 'blur(14px)',
+                                WebkitBackdropFilter: 'blur(14px)',
+                                background: isExpanded
+                                    ? 'rgba(15, 15, 15, 0.92)'
+                                    : 'rgba(18, 18, 18, 0.8)',
+                                border: `1px solid ${isExpanded
+                                    ? 'rgba(255,255,255,0.18)'
+                                    : 'rgba(255,255,255,0.08)'}`,
+                                borderRadius: '8px',
+                                boxShadow: isExpanded
+                                    ? '0 12px 40px rgba(0,0,0,0.6)'
+                                    : '0 2px 10px rgba(0,0,0,0.3)',
+                                padding: isExpanded ? '14px 14px' : '5px 10px',
+                                width: isExpanded ? '200px' : 'auto',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                userSelect: 'none' as const,
+                            }}
+                        >
+                            {/* Label */}
+                            <span style={{
+                                display: 'block',
+                                color: isExpanded
+                                    ? 'rgba(255,255,255,0.95)'
+                                    : 'rgba(255,255,255,0.7)',
+                                fontWeight: 600,
+                                letterSpacing: '0.03em',
+                                fontSize: isExpanded ? '12px' : '10px',
+                                whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                                transition: 'all 0.3s ease',
                             }}>
+                                {label}
+                            </span>
+
+                            {/* Description — scrollable */}
+                            {description && (
                                 <div style={{
-                                    maxHeight: '120px',
-                                    overflowY: 'auto',
-                                    paddingRight: '4px',
+                                    overflow: 'hidden',
+                                    maxHeight: isExpanded ? '500px' : '0px',
+                                    opacity: isExpanded ? 1 : 0,
+                                    transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease',
+                                    marginTop: isExpanded ? '8px' : '0px',
                                 }}>
-                                    <p style={{
-                                        fontSize: '11px',
-                                        lineHeight: '1.7',
-                                        color: 'rgba(255,255,255,0.5)',
-                                        margin: 0,
-                                    }}>
-                                        {description}
-                                    </p>
+                                    <div
+                                        ref={scrollRef}
+                                        style={{
+                                            maxHeight: '160px',
+                                            overflowY: 'auto',
+                                            paddingRight: '2px',
+                                            // Thin scrollbar styling
+                                            scrollbarWidth: 'thin' as const,
+                                            scrollbarColor: 'rgba(255,255,255,0.15) transparent',
+                                        }}
+                                        onWheel={(e) => e.stopPropagation()}
+                                    >
+                                        <p style={{
+                                            fontSize: '10px',
+                                            lineHeight: '1.75',
+                                            color: 'rgba(255,255,255,0.45)',
+                                            margin: 0,
+                                        }}>
+                                            {description}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </Html>
