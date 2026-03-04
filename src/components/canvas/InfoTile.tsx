@@ -13,17 +13,15 @@ interface InfoTileProps {
     description?: string
 }
 
-// Offset distance from anchor point to tile (px)
-const LINE_LENGTH = 60
+// Vertical offset from anchor to tile (px)
+const LINE_LENGTH = 55
 
 /**
- * 3D-anchored info tile with:
- * - Corner expansion (upper-left default, edge-aware)
- * - Connector line with distance from anchor
- * - Portrait ratio card (height > width)
- * - Click to expand, scrollable content (wheel captured)
- * - Glass-morphic backdrop-blur
- * - Constant screen size
+ * 3D-anchored info tile:
+ * - Straight vertical connector line (upward)
+ * - Glass-morphic style matching Gallery/ⓘ button
+ * - Click to expand with scrollable portrait card
+ * - Anchor dot in matching glass style
  */
 export function InfoTile({ id, position, label, description }: InfoTileProps) {
     const groupRef = useRef<THREE.Group>(null)
@@ -44,16 +42,16 @@ export function InfoTile({ id, position, label, description }: InfoTileProps) {
     useEffect(() => {
         if (!isExpanded) return
         const handle = (e: MouseEvent) => {
-            const el = scrollRef.current?.closest('[data-tile-root]')
+            const el = document.querySelector(`[data-tile-id="${id}"]`)
             if (el && !el.contains(e.target as Node)) {
                 useStore.getState().set({ activeTileId: null })
             }
         }
         const timer = setTimeout(() => document.addEventListener('pointerdown', handle), 60)
         return () => { clearTimeout(timer); document.removeEventListener('pointerdown', handle) }
-    }, [isExpanded])
+    }, [isExpanded, id])
 
-    // Capture wheel inside expanded tile to prevent 3D zoom
+    // Capture wheel inside expanded tile
     useEffect(() => {
         const el = scrollRef.current
         if (!el || !isExpanded) return
@@ -74,31 +72,28 @@ export function InfoTile({ id, position, label, description }: InfoTileProps) {
     const vis = visRef.current
     if (vis < 0.01) return null
 
-    // Determine corner direction based on screen position
+    // Decide direction: go up by default, down if too close to top
     const projected = new THREE.Vector3(...position).project(camera)
-    const sx = (projected.x * 0.5 + 0.5) * size.width
     const sy = (-projected.y * 0.5 + 0.5) * size.height
+    const goUp = sy > 180
 
-    // Pick corner: prefer upper-left, but flip if too close to edges
-    const goLeft = sx > 200
-    const goUp = sy > 200
-
-    // Offset in px from anchor point
-    const dx = goLeft ? -LINE_LENGTH : LINE_LENGTH
     const dy = goUp ? -LINE_LENGTH : LINE_LENGTH
 
-    // Diagonal angle for the connector line
-    const angle = Math.atan2(dy, dx)
-    const lineLen = Math.sqrt(dx * dx + dy * dy)
+    // Shared glass style tokens (matching Gallery/ⓘ button)
+    const glassStyle = {
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.1)',
+    }
+
+    const glassStyleHover = {
+        ...glassStyle,
+        background: 'rgba(255,255,255,0.1)',
+    }
 
     return (
         <group ref={groupRef} position={position}>
-            {/* Anchor dot */}
-            <mesh>
-                <sphereGeometry args={[0.012, 8, 8]} />
-                <meshBasicMaterial color="#ffffff" transparent opacity={vis * 0.5} />
-            </mesh>
-
             <Html
                 center
                 style={{
@@ -109,67 +104,70 @@ export function InfoTile({ id, position, label, description }: InfoTileProps) {
                 zIndexRange={[50, 0]}
             >
                 <div
-                    data-tile-root
+                    data-tile-id={id}
                     style={{
                         position: 'relative',
                         width: 0,
                         height: 0,
                     }}
                 >
-                    {/* Diagonal connector line */}
+                    {/* Glass anchor dot — matching button style */}
                     <div style={{
                         position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        width: `${lineLen}px`,
-                        height: '1px',
-                        backgroundColor: 'rgba(255,255,255,0.2)',
-                        transformOrigin: '0 0',
-                        transform: `rotate(${angle}rad)`,
+                        left: '-5px',
+                        top: '-5px',
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        ...glassStyle,
+                        boxShadow: '0 0 6px rgba(255,255,255,0.1)',
                         pointerEvents: 'none',
                     }} />
 
-                    {/* Tile card — offset at end of connector */}
+                    {/* Vertical connector line */}
+                    <div style={{
+                        position: 'absolute',
+                        left: '-0.5px',
+                        top: goUp ? `${dy}px` : '0px',
+                        width: '1px',
+                        height: `${LINE_LENGTH}px`,
+                        background: 'rgba(255,255,255,0.15)',
+                        pointerEvents: 'none',
+                    }} />
+
+                    {/* Tile card — positioned at end of vertical line */}
                     <div
                         style={{
                             position: 'absolute',
-                            left: `${dx}px`,
+                            left: '0px',
                             top: `${dy}px`,
-                            // Align tile corner to line endpoint
-                            transform: `translate(${goLeft ? '-100%' : '0'}, ${goUp ? '-100%' : '0'})`,
-                            transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1), padding 0.3s ease',
+                            transform: `translate(-50%, ${goUp ? '-100%' : '0'})`,
                         }}
                     >
                         <div
                             onClick={toggleExpand}
                             style={{
-                                backdropFilter: 'blur(14px)',
-                                WebkitBackdropFilter: 'blur(14px)',
-                                background: isExpanded
-                                    ? 'rgba(15, 15, 15, 0.92)'
-                                    : 'rgba(18, 18, 18, 0.8)',
-                                border: `1px solid ${isExpanded
-                                    ? 'rgba(255,255,255,0.18)'
-                                    : 'rgba(255,255,255,0.08)'}`,
-                                borderRadius: '8px',
+                                ...(isExpanded ? glassStyleHover : glassStyle),
+                                borderRadius: '10px',
                                 boxShadow: isExpanded
-                                    ? '0 12px 40px rgba(0,0,0,0.6)'
-                                    : '0 2px 10px rgba(0,0,0,0.3)',
-                                padding: isExpanded ? '14px 14px' : '5px 10px',
-                                width: isExpanded ? '200px' : 'auto',
+                                    ? '0 8px 32px rgba(0,0,0,0.4)'
+                                    : '0 2px 8px rgba(0,0,0,0.2)',
+                                padding: isExpanded ? '12px 14px' : '5px 10px',
+                                width: isExpanded ? '190px' : 'auto',
                                 cursor: 'pointer',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 userSelect: 'none' as const,
+                                color: 'rgba(255,255,255,0.6)',
                             }}
                         >
                             {/* Label */}
                             <span style={{
                                 display: 'block',
                                 color: isExpanded
-                                    ? 'rgba(255,255,255,0.95)'
-                                    : 'rgba(255,255,255,0.7)',
-                                fontWeight: 600,
-                                letterSpacing: '0.03em',
+                                    ? 'rgba(255,255,255,0.9)'
+                                    : 'rgba(255,255,255,0.6)',
+                                fontWeight: 500,
+                                letterSpacing: '0.04em',
                                 fontSize: isExpanded ? '12px' : '10px',
                                 whiteSpace: isExpanded ? 'normal' : 'nowrap',
                                 transition: 'all 0.3s ease',
@@ -189,19 +187,18 @@ export function InfoTile({ id, position, label, description }: InfoTileProps) {
                                     <div
                                         ref={scrollRef}
                                         style={{
-                                            maxHeight: '160px',
+                                            maxHeight: '150px',
                                             overflowY: 'auto',
                                             paddingRight: '2px',
-                                            // Thin scrollbar styling
                                             scrollbarWidth: 'thin' as const,
-                                            scrollbarColor: 'rgba(255,255,255,0.15) transparent',
+                                            scrollbarColor: 'rgba(255,255,255,0.12) transparent',
                                         }}
                                         onWheel={(e) => e.stopPropagation()}
                                     >
                                         <p style={{
                                             fontSize: '10px',
                                             lineHeight: '1.75',
-                                            color: 'rgba(255,255,255,0.45)',
+                                            color: 'rgba(255,255,255,0.4)',
                                             margin: 0,
                                         }}>
                                             {description}
