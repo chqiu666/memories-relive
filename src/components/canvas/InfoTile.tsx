@@ -11,6 +11,8 @@ interface InfoTileProps {
     position: [number, number, number]
     label: string
     description?: string
+    /** Optional forced expansion direction: 'up' | 'down' */
+    forceDir?: 'up' | 'down'
 }
 
 // Vertical offset from anchor to tile (px)
@@ -23,7 +25,7 @@ const LINE_LENGTH = 55
  * - Click to expand with scrollable portrait card
  * - Anchor dot in matching glass style
  */
-export function InfoTile({ id, position, label, description }: InfoTileProps) {
+export function InfoTile({ id, position, label, description, forceDir }: InfoTileProps) {
     const groupRef = useRef<THREE.Group>(null)
     const visRef = useRef(1)
     const scrollRef = useRef<HTMLDivElement>(null)
@@ -72,10 +74,15 @@ export function InfoTile({ id, position, label, description }: InfoTileProps) {
     const vis = visRef.current
     if (vis < 0.01) return null
 
-    // Decide direction: go up by default, down if too close to top
-    const projected = new THREE.Vector3(...position).project(camera)
-    const sy = (-projected.y * 0.5 + 0.5) * size.height
-    const goUp = sy > 180
+    // Decide direction: forced > auto (up default, down if near top)
+    let goUp: boolean
+    if (forceDir) {
+        goUp = forceDir === 'up'
+    } else {
+        const projected = new THREE.Vector3(...position).project(camera)
+        const sy = (-projected.y * 0.5 + 0.5) * size.height
+        goUp = sy > 180
+    }
 
     const dy = goUp ? -LINE_LENGTH : LINE_LENGTH
 

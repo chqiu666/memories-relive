@@ -26,7 +26,7 @@ function SceneContent() {
     if (!activeMemory) return null
 
     const hlUrl = getHlUrl(activeMemory.modelSrc)
-    const tiles = (activeMemory as any).tiles as { position: [number, number, number]; label: string; description?: string }[] | undefined
+    const tiles = (activeMemory as any).tiles as { position: [number, number, number]; label: string; description?: string; expandDir?: 'up' | 'down' }[] | undefined
 
     return (
         <>
@@ -40,6 +40,7 @@ function SceneContent() {
                     position={tile.position}
                     label={tile.label}
                     description={tile.description}
+                    forceDir={tile.expandDir}
                 />
             ))}
             <EffectComposer>

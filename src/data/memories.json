@@ -40,7 +40,8 @@
                     4.1009
                 ],
                 "label": "Carved Text",
-                "description": "Anthropogenic linear grooves were carved into the concrete surface, forming the names \"Ale + ANYA\" and a date. This carving, driven by clear subjective intent, forcibly embeds a private emotional text into the city's public infrastructure."
+                "description": "Anthropogenic linear grooves were carved into the concrete surface, forming the names \"Ale + ANYA\" and a date. This carving, driven by clear subjective intent, forcibly embeds a private emotional text into the city's public infrastructure.",
+                "expandDir": "down"
             }
         ]
     },
