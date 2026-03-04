@@ -11,6 +11,7 @@ interface DebugState {
     // Rendering controls
     pointSize: number      // base point size (0.1 – 3.0)
     samplePercent: number  // % of points to render (1 – 100)
+    hlFullSample: boolean  // highlight layer: true = 100%, false = follow samplePercent
 
     // Runtime stats (set by PointCloud every frame)
     fps: number
@@ -29,6 +30,7 @@ export const useStore = create<DebugState>((set) => ({
 
     pointSize: 0.10,
     samplePercent: 30,
+    hlFullSample: false,
 
     fps: 0,
     totalPoints: 0,

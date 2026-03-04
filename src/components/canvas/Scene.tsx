@@ -5,8 +5,16 @@ import { OrbitControls } from '@react-three/drei'
 import { Suspense } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
+import { HighlightPointCloud } from './HighlightPointCloud'
 import { FpsMonitor } from './FpsMonitor'
 import memories from '@/data/memories.json'
+
+/** Derive the hl- URL from a base model URL, e.g. /models/foo.ply → /models/hl-foo.ply */
+function getHlUrl(baseUrl: string): string {
+    const parts = baseUrl.split('/')
+    const filename = parts.pop()!
+    return [...parts, `hl-${filename}`].join('/')
+}
 
 function SceneContent() {
     const { activeMemoryId } = useStore((s) => s)
@@ -14,10 +22,13 @@ function SceneContent() {
 
     if (!activeMemory) return null
 
+    const hlUrl = getHlUrl(activeMemory.modelSrc)
+
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={activeMemory.modelSrc} opacity={1} />
+            <HighlightPointCloud url={hlUrl} />
             <FpsMonitor />
         </>
     )

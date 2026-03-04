@@ -13,6 +13,7 @@ export function DebugPanel() {
         rendererType,
         pointSize,
         samplePercent,
+        hlFullSample,
         set,
     } = useStore((s) => s)
 
@@ -87,6 +88,18 @@ export function DebugPanel() {
                                 displayValue={pointSize.toFixed(2)}
                                 onChange={(v) => set({ pointSize: v })}
                             />
+                            {/* HL Full Sample toggle */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-white/40 uppercase tracking-wide">HL Full Sample</span>
+                                <button
+                                    onClick={() => set({ hlFullSample: !hlFullSample })}
+                                    className={`w-8 h-4 rounded-full transition-colors duration-200 cursor-pointer ${hlFullSample ? 'bg-emerald-500/60' : 'bg-white/10'
+                                        }`}
+                                >
+                                    <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${hlFullSample ? 'translate-x-4.5' : 'translate-x-0.5'
+                                        }`} />
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 )}
