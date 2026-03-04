@@ -14,15 +14,8 @@ export function UI() {
 
     return (
         <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-8 z-10">
-            {/* Header */}
-            <div className="flex justify-between items-start">
-                <div>
-                    <h1 className="text-3xl font-extralight tracking-[0.3em] uppercase text-white/90">
-                        Memories Relive
-                    </h1>
-                </div>
-
-                {/* Back to Gallery */}
+            {/* Header – Back button only, no title */}
+            <div className="flex justify-end items-start">
                 <motion.button
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -30,7 +23,7 @@ export function UI() {
                     className="pointer-events-auto flex items-center gap-2 text-white/60 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-white/10"
                 >
                     <ArrowLeft size={16} />
-                    <span className="text-sm uppercase tracking-wider">Gallery</span>
+                    <span className="text-sm tracking-wider">Gallery</span>
                 </motion.button>
             </div>
 
@@ -44,7 +37,7 @@ export function UI() {
                             exit={{ opacity: 0 }}
                             className="text-center"
                         >
-                            <h2 className="text-2xl text-white font-thin tracking-widest uppercase">
+                            <h2 className="text-2xl text-white font-thin tracking-wide">
                                 {activeMemory.title}
                             </h2>
                             <p className="text-xs text-white/30 mt-2 tracking-wide">

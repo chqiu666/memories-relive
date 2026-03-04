@@ -11,12 +11,12 @@ export function Gallery() {
         <div className="absolute inset-0 z-20 bg-[#0a0a0a] overflow-y-auto">
             {/* Header */}
             <header className="sticky top-0 z-30 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 px-8 py-6">
-                <h1 className="text-3xl font-extralight tracking-[0.3em] uppercase text-white/90">
-                    Memories Relive
+                <h1
+                    className="text-3xl text-white/90"
+                    style={{ fontFamily: 'VcrEas, sans-serif' }}
+                >
+                    memories relived
                 </h1>
-                <p className="text-xs text-white/30 mt-1 tracking-widest uppercase">
-                    Point Cloud Archive
-                </p>
             </header>
 
             {/* Grid */}
@@ -43,7 +43,7 @@ export function Gallery() {
 
                             {/* Label */}
                             <div className="absolute bottom-0 left-0 right-0 p-5">
-                                <h2 className="text-lg font-light tracking-widest text-white/90 uppercase group-hover:text-white transition-colors">
+                                <h2 className="text-lg font-light tracking-wide text-white/90 group-hover:text-white transition-colors">
                                     {mem.title}
                                 </h2>
                                 <p className="text-xs text-white/40 mt-1 tracking-wide group-hover:text-white/60 transition-colors">
