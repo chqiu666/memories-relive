@@ -1,11 +1,30 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useRef } from 'react'
 import { useStore } from '@/store'
 import memories from '@/data/memories.json'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
+
+gsap.registerPlugin(useGSAP)
 
 export function Gallery() {
     const { set } = useStore((s) => s)
+    const gridRef = useRef<HTMLDivElement>(null)
+
+    useGSAP(() => {
+        const tiles = gridRef.current?.querySelectorAll('.tile')
+        if (!tiles) return
+
+        gsap.from(tiles, {
+            opacity: 0,
+            scale: 0.95,
+            duration: 0.6,
+            stagger: 0.08,
+            ease: 'power2.out',
+            clearProps: 'all',
+        })
+    }, { scope: gridRef })
 
     return (
         <div className="absolute inset-0 z-20 bg-[#0a0a0a] overflow-y-auto">
@@ -21,15 +40,12 @@ export function Gallery() {
 
             {/* Grid */}
             <div className="px-8 py-10">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                    {memories.map((mem, i) => (
-                        <motion.button
+                <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                    {memories.map((mem) => (
+                        <button
                             key={mem.id}
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1, duration: 0.5, ease: 'easeOut' }}
                             onClick={() => set({ viewMode: 'detail', activeMemoryId: mem.id })}
-                            className="group relative aspect-[4/3] overflow-hidden rounded-lg bg-black/50 border border-white/5 hover:border-white/20 transition-all duration-500 cursor-pointer text-left"
+                            className="tile group relative aspect-[4/3] overflow-hidden rounded-lg bg-black/50 border border-white/5 hover:border-white/20 transition-all duration-500 cursor-pointer text-left"
                         >
                             {/* Thumbnail Image */}
                             <img
@@ -53,7 +69,7 @@ export function Gallery() {
 
                             {/* Hover glow */}
                             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none" />
-                        </motion.button>
+                        </button>
                     ))}
                 </div>
             </div>
