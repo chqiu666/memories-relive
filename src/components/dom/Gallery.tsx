@@ -1,16 +1,18 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '@/store'
 import memories from '@/data/memories.json'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
+import { Upload, X } from 'lucide-react'
 
 gsap.registerPlugin(useGSAP)
 
 export function Gallery() {
     const { set } = useStore((s) => s)
     const gridRef = useRef<HTMLDivElement>(null)
+    const [uploadOpen, setUploadOpen] = useState(false)
 
     useGSAP(() => {
         const tiles = gridRef.current?.querySelectorAll('.tile')
@@ -79,6 +81,39 @@ export function Gallery() {
                     ))}
                 </div>
             </div>
+
+            {/* Upload FAB */}
+            <button
+                onClick={() => setUploadOpen(true)}
+                className="fixed bottom-8 right-8 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-white/90 hover:bg-white text-[#0a0a0a] font-medium text-sm shadow-lg shadow-black/30 transition-all duration-300 hover:scale-105 cursor-pointer"
+            >
+                <Upload size={18} strokeWidth={2} />
+                <span>Upload</span>
+            </button>
+
+            {/* Upload Modal */}
+            {uploadOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="relative bg-[#141414] border border-white/10 rounded-2xl w-full max-w-md p-8 shadow-2xl">
+                        {/* Close */}
+                        <button
+                            onClick={() => setUploadOpen(false)}
+                            className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <h2 className="text-xl font-medium text-white/90 mb-6">上传照片</h2>
+
+                        {/* Placeholder drop zone */}
+                        <div className="border-2 border-dashed border-white/10 rounded-xl p-10 flex flex-col items-center gap-3 text-white/30">
+                            <Upload size={32} strokeWidth={1.5} />
+                            <p className="text-sm">拖拽或点击选择文件</p>
+                            <p className="text-xs text-white/20">功能开发中，敬请期待</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
