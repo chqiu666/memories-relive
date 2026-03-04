@@ -1,21 +1,21 @@
 [
     {
         "id": "gsapp-making",
-        "title": "GSAPP Making",
+        "title": "gadget on wall",
         "description": "Point cloud scan of the making process at GSAPP.",
         "thumbnail": "/thumbnails/gsapp-making.jpg",
         "modelSrc": "/models/GSAPP-making.ply"
     },
     {
         "id": "concrete-surface",
-        "title": "Concrete Surface",
+        "title": "hurry pigeon",
         "description": "Detailed scan of a concrete surface texture.",
         "thumbnail": "/thumbnails/concrete-surface.jpg",
         "modelSrc": "/models/concrete-surface.ply"
     },
     {
         "id": "indoor-sofa",
-        "title": "Indoor Sofa",
+        "title": "faded cat",
         "description": "Point cloud capture of an indoor sofa scene.",
         "thumbnail": "/thumbnails/indoor-sofa.jpg",
         "modelSrc": "/models/indoor-sofa.ply"
