@@ -65,9 +65,9 @@ export function Gallery() {
                                 >
                                     {mem.title}
                                 </h2>
-                                <div className="flex items-center gap-2 mt-2">
-                                    <div className="w-6 h-6 rounded-full bg-white/20 flex-shrink-0" />
-                                    <span className="text-xs text-white/40 group-hover:text-white/60 transition-colors">
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <div className="w-3.5 h-3.5 rounded-full bg-white/20 flex-shrink-0" />
+                                    <span className="text-[11px] text-white/40 group-hover:text-white/60 transition-colors">
                                         Anonymous
                                     </span>
                                 </div>
