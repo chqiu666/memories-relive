@@ -26,11 +26,12 @@ export function HighlightPointCloud({
     const samplePercent = useStore((s) => s.samplePercent)
     const pointSize = useStore((s) => s.pointSize)
 
+
     const effectiveSample = hlFullSample ? 100 : samplePercent
 
-    const { processedGeometry, center } = useMemo(() => {
+    const processedGeometry = useMemo(() => {
         const posAttr = geometry.getAttribute('position')
-        if (!posAttr) return { processedGeometry: geometry, center: [0, 0, 0] as [number, number, number] }
+        if (!posAttr) return geometry
 
         const totalCount = posAttr.count
         const stride = effectiveSample >= 100 ? 1 : Math.max(1, Math.round(100 / effectiveSample))
@@ -67,17 +68,7 @@ export function HighlightPointCloud({
             if (newColor) geo.setAttribute('color', new THREE.BufferAttribute(newColor, 3))
         }
 
-        // Compute center offset from own bounding box
-        geo.computeBoundingBox()
-        const box = geo.boundingBox!
-        const cx = (box.min.x + box.max.x) / 2
-        const cy = (box.min.y + box.max.y) / 2
-        const cz = (box.min.z + box.max.z) / 2
-
-        return {
-            processedGeometry: geo,
-            center: [-cx, -cy, -cz] as [number, number, number],
-        }
+        return geo
     }, [geometry, effectiveSample])
 
     // Dispose sampled geometry on unmount or change
@@ -101,7 +92,6 @@ export function HighlightPointCloud({
     return (
         <group position={position}>
             <points
-                position={center}
                 scale={scale}
             >
                 <primitive object={processedGeometry} />

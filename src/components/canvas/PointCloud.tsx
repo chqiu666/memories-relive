@@ -90,16 +90,8 @@ export function PointCloud({
         }
         geo.setAttribute('aTraceMask', new THREE.BufferAttribute(traceMask, 1))
 
-        // Center offset
-        geo.computeBoundingBox()
-        const box = geo.boundingBox!
-        const cx = (box.min.x + box.max.x) / 2
-        const cy = (box.min.y + box.max.y) / 2
-        const cz = (box.min.z + box.max.z) / 2
-
         return {
             processedGeometry: geo,
-            center: [-cx, -cy, -cz] as [number, number, number],
             totalCount,
             renderedCount: count,
         }
@@ -131,7 +123,6 @@ export function PointCloud({
     return (
         <group position={position}>
             <points
-                position={center}
                 scale={scale}
                 onClick={onClick}
                 onPointerOver={onClick ? () => { document.body.style.cursor = 'pointer' } : undefined}

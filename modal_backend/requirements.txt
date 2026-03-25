@@ -1,0 +1,3 @@
+# Local requirements for running Modal CLI commands
+# Install with: pip install -r modal_backend/requirements.txt
+modal>=0.64.0
