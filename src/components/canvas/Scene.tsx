@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
-import { useStore } from '@/store'
+import { useStore, getLodUrl } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
 import { CoordPicker } from './CoordPicker'
@@ -38,10 +38,15 @@ function getHlUrl(baseUrl: string): string {
 }
 
 function SceneContent() {
-    const { activeMemoryId, memories } = useStore((s) => s)
+    const { activeMemoryId, memories, loadedLod, lodFallback } = useStore((s) => s)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
 
     if (!activeMemory || !activeMemory.model_url) return null
+
+    // Determine which PLY URL to load
+    const modelUrl = lodFallback
+        ? activeMemory.model_url              // fallback: use base URL, client-side sampling
+        : getLodUrl(activeMemory.model_url, loadedLod)  // LOD: use LOD-specific URL
 
     const hlUrl = getHlUrl(activeMemory.model_url)
     const tiles = activeMemory.traces?.map((t) => ({
@@ -54,7 +59,7 @@ function SceneContent() {
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
-            <PointCloud url={activeMemory.model_url!} opacity={1} />
+            <PointCloud url={modelUrl} opacity={1} />
             <R3FErrorBoundary>
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>

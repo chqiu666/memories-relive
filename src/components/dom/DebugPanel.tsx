@@ -2,7 +2,7 @@
 
 import { useStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Info, X, Crosshair, Clipboard } from 'lucide-react'
+import { Info, X, Crosshair, Clipboard, Loader2 } from 'lucide-react'
 
 export function DebugPanel() {
     const {
@@ -14,9 +14,13 @@ export function DebugPanel() {
         pointSize,
         samplePercent,
         hlFullSample,
+        loadedLod,
+        lodLoading,
+        lodFallback,
         raycastMode,
         pickedCoord,
         set,
+        requestLod,
     } = useStore((s) => s)
 
     const viewMode = useStore((s) => s.viewMode)
@@ -69,16 +73,8 @@ export function DebugPanel() {
 
                         {/* Controls */}
                         <div className="px-4 py-3 space-y-4 border-b border-white/5">
-                            {/* Sampling slider */}
-                            <SliderControl
-                                label="Sample %"
-                                value={samplePercent}
-                                min={1}
-                                max={100}
-                                step={1}
-                                displayValue={`${samplePercent}%`}
-                                onChange={(v) => set({ samplePercent: v })}
-                            />
+                            {/* LOD Quality slider with breakpoints */}
+                            <LodSlider />
 
                             {/* Point size slider */}
                             <SliderControl
@@ -193,6 +189,121 @@ function SliderControl({
                     [&::-webkit-slider-thumb]:transition-colors
                     [&::-webkit-slider-thumb]:shadow-md"
             />
+        </div>
+    )
+}
+
+const LOD_BREAKPOINTS = [30, 60, 100] as const
+
+function LodSlider() {
+    const {
+        samplePercent,
+        loadedLod,
+        lodLoading,
+        lodFallback,
+        set,
+        requestLod,
+    } = useStore((s) => s)
+
+    // In fallback mode (no LOD files), show a simple unrestricted slider
+    if (lodFallback) {
+        return (
+            <SliderControl
+                label="Quality %"
+                value={samplePercent}
+                min={1}
+                max={100}
+                step={1}
+                displayValue={`${samplePercent}%`}
+                onChange={(v) => set({ samplePercent: v })}
+            />
+        )
+    }
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] text-white/40 uppercase tracking-wide">Quality</span>
+                <span className="text-xs font-mono text-white/70">{samplePercent}%</span>
+            </div>
+
+            {/* Slider + breakpoints */}
+            <div className="relative">
+                {/* Range input — max capped to loaded LOD */}
+                <input
+                    type="range"
+                    min={1}
+                    max={loadedLod}
+                    step={1}
+                    value={Math.min(samplePercent, loadedLod)}
+                    onChange={(e) => set({ samplePercent: Number(e.target.value) })}
+                    className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer
+                        [&::-webkit-slider-thumb]:appearance-none
+                        [&::-webkit-slider-thumb]:w-3
+                        [&::-webkit-slider-thumb]:h-3
+                        [&::-webkit-slider-thumb]:rounded-full
+                        [&::-webkit-slider-thumb]:bg-white/80
+                        [&::-webkit-slider-thumb]:hover:bg-white
+                        [&::-webkit-slider-thumb]:transition-colors
+                        [&::-webkit-slider-thumb]:shadow-md"
+                />
+
+                {/* Breakpoint dots */}
+                <div className="absolute inset-0 pointer-events-none" style={{ top: '-3px' }}>
+                    {LOD_BREAKPOINTS.map((bp) => {
+                        const pct = ((bp - 1) / 99) * 100  // position on track (1-100 range)
+                        const isLoaded = bp <= loadedLod
+                        const isLoadingThis = lodLoading && bp > loadedLod  // next one being loaded
+                        const isActive = bp === loadedLod
+
+                        return (
+                            <button
+                                key={bp}
+                                onClick={() => {
+                                    if (bp <= loadedLod) {
+                                        // Already loaded — snap slider to this level
+                                        set({ samplePercent: bp })
+                                    } else if (!lodLoading) {
+                                        // Request higher LOD
+                                        requestLod(bp)
+                                    }
+                                }}
+                                disabled={lodLoading}
+                                className="absolute pointer-events-auto group"
+                                style={{
+                                    left: `${pct}%`,
+                                    transform: 'translateX(-50%)',
+                                    top: '-2px',
+                                }}
+                                title={`${bp}%${isLoaded ? ' (loaded)' : ''}`}
+                            >
+                                {isLoadingThis ? (
+                                    <Loader2 size={10} className="animate-spin text-blue-400" />
+                                ) : (
+                                    <div
+                                        className={`w-2.5 h-2.5 rounded-full border transition-all duration-200 ${
+                                            isActive
+                                                ? 'bg-blue-400 border-blue-400 scale-110'
+                                                : isLoaded
+                                                    ? 'bg-white/40 border-white/40 group-hover:bg-white/60'
+                                                    : 'bg-transparent border-white/20 group-hover:border-white/40'
+                                        }`}
+                                    />
+                                )}
+                                {/* Label below dot */}
+                                <span className={`absolute top-3.5 left-1/2 -translate-x-1/2 text-[8px] font-mono whitespace-nowrap ${
+                                    isActive ? 'text-blue-400/70' : 'text-white/20'
+                                }`}>
+                                    {bp}
+                                </span>
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* Spacer for breakpoint labels */}
+            <div className="h-3" />
         </div>
     )
 }
