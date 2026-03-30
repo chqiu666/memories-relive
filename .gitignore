@@ -45,3 +45,4 @@ modal_backend/test_images/
 modal_backend/output/
 __pycache__/
 *.pyc
+.env*.local

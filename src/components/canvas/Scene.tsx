@@ -10,7 +10,7 @@ import { HighlightPointCloud } from './HighlightPointCloud'
 import { CoordPicker } from './CoordPicker'
 import { InfoTile } from './InfoTile'
 import { FpsMonitor } from './FpsMonitor'
-import memories from '@/data/memories.json'
+
 
 /** Derive the hl- URL from a base model URL, e.g. /models/foo.ply → /models/hl-foo.ply */
 function getHlUrl(baseUrl: string): string {
@@ -20,18 +20,23 @@ function getHlUrl(baseUrl: string): string {
 }
 
 function SceneContent() {
-    const { activeMemoryId } = useStore((s) => s)
+    const { activeMemoryId, memories } = useStore((s) => s)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
 
-    if (!activeMemory) return null
+    if (!activeMemory || !activeMemory.model_url) return null
 
-    const hlUrl = getHlUrl(activeMemory.modelSrc)
-    const tiles = (activeMemory as any).tiles as { position: [number, number, number]; label: string; description?: string; expandDir?: 'up' | 'down' }[] | undefined
+    const hlUrl = getHlUrl(activeMemory.model_url)
+    const tiles = activeMemory.traces?.map((t) => ({
+        position: t.position,
+        label: t.label,
+        description: t.description,
+        expandDir: t.expand_dir as 'up' | 'down' | undefined,
+    }))
 
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
-            <PointCloud url={activeMemory.modelSrc} opacity={1} />
+            <PointCloud url={activeMemory.model_url!} opacity={1} />
             <HighlightPointCloud url={hlUrl} />
             {tiles?.map((tile, i) => (
                 <InfoTile

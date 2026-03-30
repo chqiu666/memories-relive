@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useStore } from '@/store'
-import memories from '@/data/memories.json'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { Upload, X, Trees } from 'lucide-react'
@@ -10,8 +9,13 @@ import { Upload, X, Trees } from 'lucide-react'
 gsap.registerPlugin(useGSAP)
 
 export function Gallery() {
-    const { set } = useStore((s) => s)
+    const { memories, fetchMemories, set } = useStore((s) => s)
     const gridRef = useRef<HTMLDivElement>(null)
+
+    // 挂载时从 API 加载 memories
+    useEffect(() => {
+        if (memories.length === 0) fetchMemories()
+    }, [memories.length, fetchMemories])
     const [uploadOpen, setUploadOpen] = useState(false)
     const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -75,7 +79,7 @@ export function Gallery() {
                         >
                             {/* Thumbnail Image */}
                             <img
-                                src={mem.thumbnail}
+                                src={mem.thumbnail_url || ''}
                                 alt={mem.title}
                                 className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 ease-out"
                             />

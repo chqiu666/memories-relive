@@ -6,7 +6,7 @@ import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html } from '@react-three/drei'
 import { PLYLoader } from 'three-stdlib'
 import { useStore } from '@/store'
-import memories from '@/data/memories.json'
+
 
 import '../canvas/MemoryShaderMaterial'
 
@@ -151,13 +151,15 @@ const GARDEN_POSITIONS: [number, number, number][] = [
 ]
 
 function GardenContent() {
+    const { memories } = useStore((s) => s)
+
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
-            {memories.map((mem, i) => (
+            {memories.filter((m) => m.model_url).map((mem, i) => (
                 <GardenCloud
                     key={mem.id}
-                    url={mem.modelSrc}
+                    url={mem.model_url!}
                     gardenPosition={GARDEN_POSITIONS[i] || [i * 10, 0, 0]}
                     memId={mem.id}
                     title={mem.title}
