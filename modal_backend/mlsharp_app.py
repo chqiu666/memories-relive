@@ -308,6 +308,42 @@ def predict_gaussian_splat(image_bytes: bytes, filename: str) -> tuple[str, byte
 
 
 # ---------------------------------------------------------------------------
+# Web endpoint: called by Next.js /api/generate from Vercel
+# Deploy with: MODAL_ENVIRONMENT=dev-mlsharp modal deploy modal_backend/mlsharp_app.py
+# ---------------------------------------------------------------------------
+from fastapi import UploadFile, File
+from fastapi.responses import Response
+
+@app.function(
+    gpu="t4",
+    volumes={MODEL_CACHE_PATH: model_volume},
+    timeout=TIMEOUT_SECONDS,
+    image=mlsharp_image,
+)
+@modal.web_endpoint(method="POST", label="predict")
+async def predict_web(image: UploadFile = File(...)):
+    """
+    HTTP endpoint for ml-sharp inference.
+
+    POST multipart/form-data with an 'image' field.
+    Returns PLY bytes with Content-Type: application/octet-stream.
+    """
+    image_bytes = await image.read()
+    filename = image.filename or "upload.jpg"
+
+    output_filename, ply_bytes = predict_gaussian_splat.local(image_bytes, filename)
+
+    return Response(
+        content=ply_bytes,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{output_filename}"',
+            "X-Output-Filename": output_filename,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Local entrypoint: `MODAL_ENVIRONMENT=dev-mlsharp modal run modal_backend/mlsharp_app.py`
 # ---------------------------------------------------------------------------
 @app.local_entrypoint()

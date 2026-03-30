@@ -10,6 +10,10 @@ interface AppState {
     memories: MemoryWithTraces[]
     memoriesLoading: boolean
 
+    // Generation state
+    generating: boolean
+    generatingProgress: string
+
     // Debug 面板
     debugOpen: boolean
 
@@ -36,6 +40,7 @@ interface AppState {
     // 异步 actions
     fetchMemories: () => Promise<void>
     updateMemory: (id: string, data: Partial<{ title: string; description: string }>) => Promise<void>
+    generateMemory: (imageFile: File) => Promise<void>
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -44,6 +49,9 @@ export const useStore = create<AppState>((set, get) => ({
 
     memories: [],
     memoriesLoading: false,
+
+    generating: false,
+    generatingProgress: '',
 
     debugOpen: false,
 
@@ -94,6 +102,54 @@ export const useStore = create<AppState>((set, get) => ({
             set({ memories })
         } catch (err) {
             console.error('updateMemory 失败:', err)
+        }
+    },
+
+    // 上传图片 → Modal 推理 → 创建新 memory
+    generateMemory: async (imageFile: File) => {
+        set({ generating: true, generatingProgress: 'Uploading image...' })
+        try {
+            set({ generatingProgress: 'Generating 3D model...' })
+
+            const formData = new FormData()
+            formData.append('image', imageFile)
+
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                body: formData,
+            })
+
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || `Generation failed: ${res.status}`)
+            }
+
+            const result = await res.json()
+
+            // Add new memory to local store
+            const newMemory = {
+                id: result.id,
+                title: result.title,
+                description: 'Generated from photo',
+                thumbnail_url: result.thumbnail_url,
+                model_url: result.model_url,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                traces: [],
+            }
+
+            const memories = [...get().memories, newMemory]
+            set({
+                memories,
+                generating: false,
+                generatingProgress: '',
+                viewMode: 'detail',
+                activeMemoryId: result.id,
+            })
+        } catch (err) {
+            console.error('generateMemory failed:', err)
+            set({ generating: false, generatingProgress: '' })
+            throw err // re-throw for UI error handling
         }
     },
 }))
