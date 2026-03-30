@@ -3,13 +3,31 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
-import { Suspense } from 'react'
+import { Suspense, Component, type ReactNode } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
 import { CoordPicker } from './CoordPicker'
 import { InfoTile } from './InfoTile'
 import { FpsMonitor } from './FpsMonitor'
+
+/** Swallows render errors from children (e.g. missing PLY files) */
+class R3FErrorBoundary extends Component<
+    { children: ReactNode; fallback?: ReactNode },
+    { hasError: boolean }
+> {
+    state = { hasError: false }
+    static getDerivedStateFromError() {
+        return { hasError: true }
+    }
+    componentDidCatch(err: Error) {
+        console.warn('Scene error caught:', err.message)
+    }
+    render() {
+        if (this.state.hasError) return this.props.fallback ?? null
+        return this.props.children
+    }
+}
 
 
 /** Derive the hl- URL from a base model URL, e.g. /models/foo.ply → /models/hl-foo.ply */
@@ -37,7 +55,9 @@ function SceneContent() {
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={activeMemory.model_url!} opacity={1} />
-            <HighlightPointCloud url={hlUrl} />
+            <R3FErrorBoundary>
+                <HighlightPointCloud url={hlUrl} />
+            </R3FErrorBoundary>
             {tiles?.map((tile, i) => (
                 <InfoTile
                     key={`${activeMemory.id}-tile-${i}`}
@@ -71,7 +91,9 @@ export default function Scene() {
             gl={{ antialias: true }}
         >
             <Suspense fallback={null}>
-                <SceneContent />
+                <R3FErrorBoundary>
+                    <SceneContent />
+                </R3FErrorBoundary>
             </Suspense>
         </Canvas>
     )
