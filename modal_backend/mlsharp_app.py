@@ -152,7 +152,7 @@ def predict_gaussian_splat(image_bytes: bytes, filename: str) -> tuple[str, byte
     sys.path.insert(0, "/workspace/ml-sharp/src")
 
     from sharp.models import PredictorParams, create_predictor
-    from sharp.utils.gaussians import unproject_gaussians, convert_rgb_to_spherical_harmonics
+    from sharp.utils.gaussians import unproject_gaussians
     from sharp.utils import color_space as cs_utils
     from plyfile import PlyData, PlyElement
 
@@ -238,55 +238,71 @@ def predict_gaussian_splat(image_bytes: bytes, filename: str) -> tuple[str, byte
         gaussians_ndc, torch.eye(4).to(device), intrinsics_resized, internal_shape
     )
 
-    # --- Serialize to PLY ---
-    logger.info("Serializing to PLY")
+    # --- Serialize to standard point cloud PLY ---
+    # Output format matches working PLY files: xyz + normals + uchar RGBA
+    # (NOT 3DGS format with f_dc_*/scale/rot — standard viewers can't display that)
+    logger.info("Serializing to PLY (standard point cloud format)")
 
-    def _inverse_sigmoid(tensor):
-        return torch.log(tensor / (1.0 - tensor))
+    xyz = gaussians.mean_vectors.flatten(0, 1).detach().cpu().numpy()  # [N, 3]
 
-    xyz = gaussians.mean_vectors.flatten(0, 1)
-    scale_logits = torch.log(gaussians.singular_values).flatten(0, 1)
-    quaternions = gaussians.quaternions.flatten(0, 1)
+    # Convert colors: model outputs linear RGB, convert to sRGB then to 0-255
+    colors_linear = gaussians.colors.flatten(0, 1).detach().cpu()      # [N, 3]
+    colors_srgb = cs_utils.linearRGB2sRGB(colors_linear).numpy()       # [N, 3] in [0, 1]
+    colors_u8 = np.clip(colors_srgb * 255, 0, 255).astype(np.uint8)   # [N, 3] as uint8
 
-    colors = convert_rgb_to_spherical_harmonics(
-        cs_utils.linearRGB2sRGB(gaussians.colors.flatten(0, 1))
-    )
+    # Opacity → alpha
+    opacities = gaussians.opacities.flatten(0, 1).detach().cpu().numpy()  # [N]
+    alpha_u8 = np.clip(opacities * 255, 0, 255).astype(np.uint8)         # [N]
 
-    opacity_logits = _inverse_sigmoid(gaussians.opacities).flatten(0, 1).unsqueeze(-1)
+    # Dummy normals (zeros — not computed by SHARP)
+    normals = np.zeros_like(xyz, dtype=np.float32)  # [N, 3]
 
-    attributes = torch.cat(
-        (xyz, colors, opacity_logits, scale_logits, quaternions),
-        dim=1,
-    )
+    num_points = len(xyz)
 
     dtype_full = [
-        (attribute, "f4")
-        for attribute in ["x", "y", "z"]
-        + [f"f_dc_{i}" for i in range(3)]
-        + ["opacity"]
-        + [f"scale_{i}" for i in range(3)]
-        + [f"rot_{i}" for i in range(4)]
+        ("x", "f4"), ("y", "f4"), ("z", "f4"),
+        ("nx", "f4"), ("ny", "f4"), ("nz", "f4"),
+        ("red", "u1"), ("green", "u1"), ("blue", "u1"), ("alpha", "u1"),
     ]
 
-    num_gaussians = len(xyz)
-    elements = np.empty(num_gaussians, dtype=dtype_full)
-    elements[:] = list(map(tuple, attributes.detach().cpu().numpy()))
+    elements = np.empty(num_points, dtype=dtype_full)
+    elements["x"] = xyz[:, 0]
+    elements["y"] = xyz[:, 1]
+    elements["z"] = xyz[:, 2]
+    elements["nx"] = normals[:, 0]
+    elements["ny"] = normals[:, 1]
+    elements["nz"] = normals[:, 2]
+    elements["red"] = colors_u8[:, 0]
+    elements["green"] = colors_u8[:, 1]
+    elements["blue"] = colors_u8[:, 2]
+    elements["alpha"] = alpha_u8
+
     vertex_elements = PlyElement.describe(elements, "vertex")
 
-    plydata = PlyData([vertex_elements])
+    # Add empty face element (0 faces) — required by macOS SceneKit Quick Look.
+    # Working PLY files from MeshLab/VCGLIB include this; without it,
+    # SceneKitQLPreviewExtension crashes.
+    face_dtype = np.dtype([("vertex_indices", "O")])
+    face_data = np.empty(0, dtype=face_dtype)
+    face_elements = PlyElement.describe(face_data, "face")
+
+    plydata = PlyData([vertex_elements, face_elements],
+                      comments=["VCGLIB generated"])
     buffer = io.BytesIO()
     plydata.write(buffer)
     buffer.seek(0)
     ply_bytes = buffer.read()
 
-    # Log SH color range for debugging
-    sh_colors = colors.detach().cpu().numpy()
-    logger.info("SH color range: min=%.4f, max=%.4f, mean=%.4f",
-                sh_colors.min(), sh_colors.max(), sh_colors.mean())
+    # Log color stats for debugging
+    logger.info("Color stats: R=[%d,%d] G=[%d,%d] B=[%d,%d] mean_opacity=%.3f",
+                colors_u8[:, 0].min(), colors_u8[:, 0].max(),
+                colors_u8[:, 1].min(), colors_u8[:, 1].max(),
+                colors_u8[:, 2].min(), colors_u8[:, 2].max(),
+                opacities.mean())
 
     output_filename = Path(filename).stem + ".ply"
-    logger.info("Done processing %s — %d gaussians, %.1f KB PLY",
-                filename, num_gaussians, len(ply_bytes) / 1024)
+    logger.info("Done processing %s — %d points, %.1f KB PLY",
+                filename, num_points, len(ply_bytes) / 1024)
 
     return output_filename, ply_bytes
 
