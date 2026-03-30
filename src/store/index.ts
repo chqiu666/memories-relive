@@ -120,8 +120,16 @@ export const useStore = create<AppState>((set, get) => ({
             })
 
             if (!res.ok) {
-                const err = await res.json()
-                throw new Error(err.error || `Generation failed: ${res.status}`)
+                let errorMsg = `Generation failed: ${res.status}`
+                try {
+                    const errBody = await res.json()
+                    errorMsg = errBody.error || errorMsg
+                } catch {
+                    // Response isn't JSON — use status text
+                    const text = await res.text().catch(() => '')
+                    if (text) errorMsg = text
+                }
+                throw new Error(errorMsg)
             }
 
             const result = await res.json()

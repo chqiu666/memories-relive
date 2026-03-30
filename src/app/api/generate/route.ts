@@ -11,11 +11,24 @@ import { getDb } from '@/db'
  * Returns: { id, title, model_url, thumbnail_url }
  */
 
+// Increase Vercel function timeout (default is 10s, ml-sharp needs ~60s)
+// Requires Vercel Pro/Enterprise for >60s; Hobby supports up to 60s
+export const maxDuration = 300
+
 const MODAL_ENDPOINT_URL = process.env.MODAL_MLSHARP_ENDPOINT_URL
 
 export async function POST(request: Request) {
     try {
-        const formData = await request.formData()
+        let formData: FormData
+        try {
+            formData = await request.formData()
+        } catch {
+            return NextResponse.json(
+                { error: 'Invalid form data. Send multipart/form-data with an "image" field.' },
+                { status: 400 }
+            )
+        }
+
         const imageFile = formData.get('image') as File | null
 
         if (!imageFile) {
@@ -27,10 +40,12 @@ export async function POST(request: Request) {
 
         if (!MODAL_ENDPOINT_URL) {
             return NextResponse.json(
-                { error: 'MODAL_MLSHARP_ENDPOINT_URL not configured' },
+                { error: 'MODAL_MLSHARP_ENDPOINT_URL not configured. Set it in .env.local or Vercel env vars.' },
                 { status: 500 }
             )
         }
+
+        console.log(`[generate] Processing ${imageFile.name} (${(imageFile.size / 1024).toFixed(0)} KB)`)
 
         // 1) Send image to Modal web endpoint
         const modalForm = new FormData()
@@ -42,15 +57,17 @@ export async function POST(request: Request) {
         })
 
         if (!modalRes.ok) {
-            const errText = await modalRes.text()
+            const errText = await modalRes.text().catch(() => 'Unknown error')
             console.error('Modal inference failed:', modalRes.status, errText)
             return NextResponse.json(
-                { error: `Model inference failed: ${modalRes.status}` },
+                { error: `Model inference failed (${modalRes.status}): ${errText.slice(0, 200)}` },
                 { status: 502 }
             )
         }
 
         const plyBytes = await modalRes.arrayBuffer()
+        console.log(`[generate] Received PLY: ${(plyBytes.byteLength / 1024).toFixed(0)} KB`)
+
         const outputFilename =
             modalRes.headers.get('X-Output-Filename') ||
             imageFile.name.replace(/\.[^.]+$/, '.ply')
@@ -59,14 +76,14 @@ export async function POST(request: Request) {
         const plyBlob = await put(
             `models/${outputFilename}`,
             new Blob([plyBytes]),
-            { access: 'public' }
+            { access: 'public', addRandomSuffix: true }
         )
 
         // 3) Upload original image as thumbnail to Vercel Blob
         const thumbBlob = await put(
             `thumbnails/${imageFile.name}`,
             imageFile,
-            { access: 'public' }
+            { access: 'public', addRandomSuffix: true }
         )
 
         // 4) Create memory record in Neon DB
@@ -79,6 +96,8 @@ export async function POST(request: Request) {
             VALUES (${memoryId}, ${title}, ${'Generated from photo'}, ${thumbBlob.url}, ${plyBlob.url})
         `
 
+        console.log(`[generate] Created memory ${memoryId}: ${title}`)
+
         return NextResponse.json({
             id: memoryId,
             title,
@@ -88,8 +107,9 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error('POST /api/generate failed:', error)
+        const message = error instanceof Error ? error.message : 'Generation failed'
         return NextResponse.json(
-            { error: 'Generation failed' },
+            { error: message },
             { status: 500 }
         )
     }

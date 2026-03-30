@@ -45,6 +45,7 @@ mlsharp_image = (
         "pillow-heif>=0.16.0",
         "numpy>=1.24.0",
         "click>=8.0.0",
+        "fastapi[standard]",
     )
     # gsplat requires CUDA compilation
     .run_commands("pip install gsplat --no-build-isolation")
@@ -320,7 +321,7 @@ from fastapi.responses import Response
     timeout=TIMEOUT_SECONDS,
     image=mlsharp_image,
 )
-@modal.web_endpoint(method="POST", label="predict")
+@modal.fastapi_endpoint(method="POST", label="predict")
 async def predict_web(image: UploadFile = File(...)):
     """
     HTTP endpoint for ml-sharp inference.
