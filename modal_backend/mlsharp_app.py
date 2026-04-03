@@ -131,8 +131,6 @@ def _convert_heic_to_jpeg(image_bytes: bytes) -> bytes:
     volumes={MODEL_CACHE_PATH: model_volume},
     timeout=TIMEOUT_SECONDS,
     image=mlsharp_image,
-    scaledown_window=300,        # keep container alive 5 min after last request
-    min_containers=0,             # scale to zero when idle (no idle billing)
 )
 def predict_gaussian_splat(image_bytes: bytes, filename: str) -> tuple[str, bytes]:
     """
@@ -322,8 +320,6 @@ from fastapi.responses import Response
     volumes={MODEL_CACHE_PATH: model_volume},
     timeout=TIMEOUT_SECONDS,
     image=mlsharp_image,
-    scaledown_window=300,
-    min_containers=0,
 )
 @modal.fastapi_endpoint(method="POST", label="predict")
 async def predict_web(image: UploadFile = File(...)):
