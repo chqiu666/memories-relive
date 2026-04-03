@@ -32,8 +32,6 @@ export function PointCloud({
     // Read sampling and point size from store
     const samplePercent = useStore((s) => s.samplePercent)
     const pointSize = useStore((s) => s.pointSize)
-    const loadedLod = useStore((s) => s.loadedLod)
-    const lodFallback = useStore((s) => s.lodFallback)
 
     // Build geometry, applying sampling if needed
     const { processedGeometry, center, totalCount, renderedCount } = useMemo(() => {
@@ -46,13 +44,7 @@ export function PointCloud({
         }
 
         const totalCount = posAttr.count
-
-        // Calculate stride relative to loaded LOD tier
-        // samplePercent=30, loadedLod=30 → ratio=100% → stride=1 (show all loaded points)
-        // samplePercent=15, loadedLod=30 → ratio=50%  → stride=2 (show half of loaded points)
-        // In fallback mode, samplePercent is absolute (no LOD files, using base URL)
-        const ratio = lodFallback ? samplePercent : Math.min(100, (samplePercent / loadedLod) * 100)
-        const stride = ratio >= 100 ? 1 : Math.max(1, Math.round(100 / ratio))
+        const stride = samplePercent >= 100 ? 1 : Math.max(1, Math.round(100 / samplePercent))
         const sampledCount = Math.ceil(totalCount / stride)
 
         const geo = new THREE.BufferGeometry()
@@ -103,7 +95,7 @@ export function PointCloud({
             totalCount,
             renderedCount: count,
         }
-    }, [geometry, traceIndices, samplePercent, loadedLod, lodFallback])
+    }, [geometry, traceIndices, samplePercent])
 
     // Update stats in store (in effect, not during render)
     useEffect(() => {

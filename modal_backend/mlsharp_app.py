@@ -127,7 +127,7 @@ def _convert_heic_to_jpeg(image_bytes: bytes) -> bytes:
 # Core inference function
 # ---------------------------------------------------------------------------
 @app.function(
-    gpu="a10g",
+    gpu="t4",
     volumes={MODEL_CACHE_PATH: model_volume},
     timeout=TIMEOUT_SECONDS,
     image=mlsharp_image,
@@ -316,7 +316,7 @@ from fastapi import UploadFile, File
 from fastapi.responses import Response
 
 @app.function(
-    gpu="a10g",
+    gpu="t4",
     volumes={MODEL_CACHE_PATH: model_volume},
     timeout=TIMEOUT_SECONDS,
     image=mlsharp_image,

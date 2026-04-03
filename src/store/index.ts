@@ -19,13 +19,8 @@ interface AppState {
 
     // 渲染控制
     pointSize: number
-    samplePercent: number  // display % within loaded LOD
+    samplePercent: number
     hlFullSample: boolean
-
-    // LOD (Level of Detail)
-    loadedLod: number      // which LOD PLY is loaded (10, 30, 60, 100)
-    lodLoading: boolean    // currently fetching a new LOD
-    lodFallback: boolean   // true = LOD files don't exist, using client-side sampling
 
     // 运行时统计
     fps: number
@@ -46,7 +41,6 @@ interface AppState {
     fetchMemories: () => Promise<void>
     updateMemory: (id: string, data: Partial<{ title: string; description: string }>) => Promise<void>
     generateMemory: (imageFile: File) => Promise<void>
-    requestLod: (level: number) => Promise<void>
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -64,10 +58,6 @@ export const useStore = create<AppState>((set, get) => ({
     pointSize: 0.10,
     samplePercent: 30,
     hlFullSample: false,
-
-    loadedLod: 30,
-    lodLoading: false,
-    lodFallback: false,
 
     fps: 0,
     totalPoints: 0,
@@ -170,54 +160,4 @@ export const useStore = create<AppState>((set, get) => ({
             throw err // re-throw for UI error handling
         }
     },
-
-    // Request a higher LOD level (load new PLY)
-    requestLod: async (level: number) => {
-        const { loadedLod, lodLoading, activeMemoryId, memories } = get()
-        if (lodLoading || level <= loadedLod) return
-
-        const memory = memories.find((m) => m.id === activeMemoryId)
-        if (!memory?.model_url) return
-
-        set({ lodLoading: true })
-
-        try {
-            const url = getLodUrl(memory.model_url, level)
-
-            // Check if the LOD file exists
-            const headRes = await fetch(url, { method: 'HEAD' })
-            if (!headRes.ok) {
-                // LOD file doesn't exist — switch to fallback mode (client-side sampling with base URL)
-                console.warn(`LOD ${level}% not found, using client-side sampling`)
-                set({
-                    lodLoading: false,
-                    lodFallback: true,
-                    samplePercent: level,
-                    loadedLod: 100,  // pretend we have full data for slider range
-                })
-                return
-            }
-
-            // LOD file exists — update state so Scene loads it
-            set({
-                loadedLod: level,
-                samplePercent: level,
-                lodLoading: false,
-                lodFallback: false,
-            })
-        } catch (err) {
-            console.error('requestLod failed:', err)
-            set({ lodLoading: false })
-        }
-    },
 }))
-
-/**
- * Derive LOD URL from base model URL.
- * e.g. "https://...models/photo-xxx.ply" + 30 → "https://...models/photo-xxx_30.ply"
- * Level 100 returns the base URL unchanged.
- */
-export function getLodUrl(baseUrl: string, lod: number): string {
-    if (lod === 100) return baseUrl
-    return baseUrl.replace(/\.ply$/i, `_${lod}.ply`)
-}
