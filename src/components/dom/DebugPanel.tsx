@@ -22,6 +22,7 @@ export function DebugPanel() {
         chromaticIntensity,
         edgeBlurEnabled,
         edgeBlurIntensity,
+        hlGlowIntensity,
         set,
     } = useStore((s) => s)
 
@@ -113,6 +114,17 @@ export function DebugPanel() {
                         {/* Effects */}
                         <div className="px-4 py-3 space-y-4 border-b border-white/5">
                             <span className="text-[10px] text-white/30 uppercase tracking-widest">Effects</span>
+
+                            {/* HL Glow */}
+                            <SliderControl
+                                label="HL Glow"
+                                value={hlGlowIntensity}
+                                min={0.1}
+                                max={3.0}
+                                step={0.05}
+                                displayValue={hlGlowIntensity.toFixed(2)}
+                                onChange={(v) => set({ hlGlowIntensity: v })}
+                            />
 
                             {/* Vignette */}
                             <EffectControl

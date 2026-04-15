@@ -35,6 +35,9 @@ interface AppState {
     // Info tiles
     activeTileId: string | null
 
+    // Highlight glow
+    hlGlowIntensity: number
+
     // Post-processing effects
     vignetteEnabled: boolean
     vignetteIntensity: number
@@ -76,6 +79,8 @@ export const useStore = create<AppState>((set, get) => ({
     pickedCoord: null,
 
     activeTileId: null,
+
+    hlGlowIntensity: 1.15,
 
     vignetteEnabled: true,
     vignetteIntensity: 0.45,
