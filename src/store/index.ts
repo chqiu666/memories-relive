@@ -35,6 +35,16 @@ interface AppState {
     // Info tiles
     activeTileId: string | null
 
+    // Post-processing effects
+    vignetteEnabled: boolean
+    vignetteIntensity: number
+    chromaticEnabled: boolean
+    chromaticIntensity: number
+    edgeBlurEnabled: boolean
+    edgeBlurIntensity: number
+    bloomEnabled: boolean
+    bloomIntensity: number
+
     set: (state: Partial<AppState>) => void
 
     // 异步 actions
@@ -68,6 +78,15 @@ export const useStore = create<AppState>((set, get) => ({
     pickedCoord: null,
 
     activeTileId: null,
+
+    vignetteEnabled: true,
+    vignetteIntensity: 0.45,
+    chromaticEnabled: true,
+    chromaticIntensity: 0.003,
+    edgeBlurEnabled: true,
+    edgeBlurIntensity: 0.5,
+    bloomEnabled: true,
+    bloomIntensity: 0.15,
 
     set: (state) => set(state),
 

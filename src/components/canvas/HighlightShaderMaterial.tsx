@@ -7,7 +7,7 @@ const HighlightShaderMaterial = shaderMaterial(
     uTime: 0,
     uPixelRatio: 1,
     uSize: 0.5,
-    uBrightness: 1.6,       // color boost (not pure white — keeps original hue)
+    uBrightness: 1.15,      // color boost (subtle — keeps original hue)
     uSweepSpeed: 0.8,       // how fast the light band sweeps
     uSweepWidth: 2.0,       // width of the sweep band
   },
@@ -23,9 +23,16 @@ const HighlightShaderMaterial = shaderMaterial(
 
     void main() {
       vColor = color;
-      vWorldPos = position;
 
-      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vec3 pos = position;
+
+      // Match base model wave animation exactly
+      float wave = sin(uTime * 0.8 + pos.x * 0.3 + pos.y * 0.3) * 0.02;
+      pos.y += wave;
+
+      vWorldPos = pos;
+
+      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
       // Size attenuation (match base model)
@@ -69,7 +76,7 @@ const HighlightShaderMaterial = shaderMaterial(
 
       // Base highlight: original color * brightness
       // Sweep adds extra glow on top
-      float totalBright = uBrightness + sweepIntensity * 1.5;
+      float totalBright = uBrightness + sweepIntensity * 0.6;
       vec3 glowColor = vColor * totalBright;
 
       // Soft edge for additive blending
