@@ -2,7 +2,9 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, TiltShift } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
+import * as THREE from 'three'
 import { Suspense, Component, type ReactNode } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
@@ -39,6 +41,14 @@ function getHlUrl(baseUrl: string): string {
 
 function SceneContent() {
     const { activeMemoryId, memories } = useStore((s) => s)
+    const vignetteEnabled = useStore((s) => s.vignetteEnabled)
+    const vignetteIntensity = useStore((s) => s.vignetteIntensity)
+    const chromaticEnabled = useStore((s) => s.chromaticEnabled)
+    const chromaticIntensity = useStore((s) => s.chromaticIntensity)
+    const edgeBlurEnabled = useStore((s) => s.edgeBlurEnabled)
+    const edgeBlurIntensity = useStore((s) => s.edgeBlurIntensity)
+    const bloomEnabled = useStore((s) => s.bloomEnabled)
+    const bloomIntensity = useStore((s) => s.bloomIntensity)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
 
     if (!activeMemory || !activeMemory.model_url) return null
@@ -70,10 +80,28 @@ function SceneContent() {
             ))}
             <EffectComposer>
                 <Bloom
-                    intensity={0.25}
-                    luminanceThreshold={0.9}
-                    luminanceSmoothing={0.3}
+                    intensity={bloomEnabled ? bloomIntensity : 0}
+                    luminanceThreshold={1.2}
+                    luminanceSmoothing={0.4}
                     mipmapBlur
+                />
+                <Vignette
+                    offset={0.3}
+                    darkness={vignetteEnabled ? vignetteIntensity : 0}
+                    blendFunction={BlendFunction.NORMAL}
+                />
+                <ChromaticAberration
+                    offset={new THREE.Vector2(
+                        chromaticEnabled ? chromaticIntensity : 0,
+                        chromaticEnabled ? chromaticIntensity : 0
+                    )}
+                    radialModulation
+                    modulationOffset={0.2}
+                />
+                <TiltShift
+                    blur={edgeBlurEnabled ? edgeBlurIntensity : 0}
+                    focusArea={0.5}
+                    feather={0.3}
                 />
             </EffectComposer>
             <CoordPicker />
