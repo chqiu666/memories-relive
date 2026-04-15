@@ -22,8 +22,6 @@ export function DebugPanel() {
         chromaticIntensity,
         edgeBlurEnabled,
         edgeBlurIntensity,
-        bloomEnabled,
-        bloomIntensity,
         set,
     } = useStore((s) => s)
 
@@ -115,19 +113,6 @@ export function DebugPanel() {
                         {/* Effects */}
                         <div className="px-4 py-3 space-y-4 border-b border-white/5">
                             <span className="text-[10px] text-white/30 uppercase tracking-widest">Effects</span>
-
-                            {/* Bloom */}
-                            <EffectControl
-                                label="Bloom"
-                                enabled={bloomEnabled}
-                                onToggle={() => set({ bloomEnabled: !bloomEnabled })}
-                                value={bloomIntensity}
-                                min={0.01}
-                                max={1.0}
-                                step={0.01}
-                                displayValue={bloomIntensity.toFixed(2)}
-                                onChange={(v) => set({ bloomIntensity: v })}
-                            />
 
                             {/* Vignette */}
                             <EffectControl

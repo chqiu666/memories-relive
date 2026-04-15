@@ -42,8 +42,6 @@ interface AppState {
     chromaticIntensity: number
     edgeBlurEnabled: boolean
     edgeBlurIntensity: number
-    bloomEnabled: boolean
-    bloomIntensity: number
 
     set: (state: Partial<AppState>) => void
 
@@ -85,9 +83,6 @@ export const useStore = create<AppState>((set, get) => ({
     chromaticIntensity: 0.003,
     edgeBlurEnabled: true,
     edgeBlurIntensity: 0.5,
-    bloomEnabled: false,
-    bloomIntensity: 0.15,
-
     set: (state) => set(state),
 
     // 从 API 获取所有 memories
