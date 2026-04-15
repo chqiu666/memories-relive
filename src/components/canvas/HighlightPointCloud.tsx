@@ -25,6 +25,7 @@ export function HighlightPointCloud({
     const hlFullSample = useStore((s) => s.hlFullSample)
     const samplePercent = useStore((s) => s.samplePercent)
     const pointSize = useStore((s) => s.pointSize)
+    const hlGlowIntensity = useStore((s) => s.hlGlowIntensity)
 
 
     const effectiveSample = hlFullSample ? 100 : samplePercent
@@ -86,6 +87,7 @@ export function HighlightPointCloud({
             materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime()
             materialRef.current.uniforms.uPixelRatio.value = state.gl.getPixelRatio()
             materialRef.current.uniforms.uSize.value = pointSize
+            materialRef.current.uniforms.uBrightness.value = hlGlowIntensity
         }
     })
 

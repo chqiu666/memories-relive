@@ -2,7 +2,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, TiltShift } from '@react-three/postprocessing'
+import { EffectComposer, Vignette, ChromaticAberration, TiltShift } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import { Suspense, Component, type ReactNode } from 'react'
@@ -47,8 +47,6 @@ function SceneContent() {
     const chromaticIntensity = useStore((s) => s.chromaticIntensity)
     const edgeBlurEnabled = useStore((s) => s.edgeBlurEnabled)
     const edgeBlurIntensity = useStore((s) => s.edgeBlurIntensity)
-    const bloomEnabled = useStore((s) => s.bloomEnabled)
-    const bloomIntensity = useStore((s) => s.bloomIntensity)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
 
     if (!activeMemory || !activeMemory.model_url) return null
@@ -79,12 +77,6 @@ function SceneContent() {
                 />
             ))}
             <EffectComposer>
-                <Bloom
-                    intensity={bloomEnabled ? bloomIntensity : 0}
-                    luminanceThreshold={1.2}
-                    luminanceSmoothing={0.4}
-                    mipmapBlur
-                />
                 <Vignette
                     offset={0.3}
                     darkness={vignetteEnabled ? vignetteIntensity : 0}
