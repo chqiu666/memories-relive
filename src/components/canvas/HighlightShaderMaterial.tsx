@@ -7,7 +7,7 @@ const HighlightShaderMaterial = shaderMaterial(
     uTime: 0,
     uPixelRatio: 1,
     uSize: 0.5,
-    uBrightness: 1.15,      // color boost (subtle — keeps original hue)
+    uBrightness: 0.35,      // low base for additive — glow comes from blending, not brightness
     uSweepSpeed: 0.8,       // how fast the light band sweeps
     uSweepWidth: 2.0,       // width of the sweep band
   },
@@ -76,7 +76,7 @@ const HighlightShaderMaterial = shaderMaterial(
 
       // Base highlight: original color * brightness
       // Sweep adds extra glow on top
-      float totalBright = uBrightness + sweepIntensity * 0.6;
+      float totalBright = uBrightness + sweepIntensity * 0.4;
       vec3 glowColor = vColor * totalBright;
 
       // Soft edge for additive blending

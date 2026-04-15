@@ -85,7 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
     chromaticIntensity: 0.003,
     edgeBlurEnabled: true,
     edgeBlurIntensity: 0.5,
-    bloomEnabled: true,
+    bloomEnabled: false,
     bloomIntensity: 0.15,
 
     set: (state) => set(state),
