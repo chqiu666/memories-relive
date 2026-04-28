@@ -85,7 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     hlGlowIntensity: 2.0,
 
-    postFxEnabled: false,
+    postFxEnabled: true,
     vignetteEnabled: true,
     vignetteIntensity: 0.45,
     chromaticEnabled: true,
