@@ -3,7 +3,7 @@ import type { MemoryWithTraces } from '@/db'
 
 interface AppState {
     // 视图状态
-    viewMode: 'grid' | 'detail' | 'garden'
+    viewMode: 'grid' | 'detail' | 'garden' | 'spatial' | 'about'
     activeMemoryId: string | null
 
     // 从 API 加载的 memories 数据
@@ -53,7 +53,7 @@ interface AppState {
     // 异步 actions
     fetchMemories: () => Promise<void>
     updateMemory: (id: string, data: Partial<{ title: string; description: string }>) => Promise<void>
-    generateMemory: (imageFile: File) => Promise<void>
+    generateMemory: (imageFile: File) => Promise<string>
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -174,9 +174,9 @@ export const useStore = create<AppState>((set, get) => ({
                 memories,
                 generating: false,
                 generatingProgress: '',
-                viewMode: 'detail',
                 activeMemoryId: result.id,
             })
+            return result.id as string
         } catch (err) {
             console.error('generateMemory failed:', err)
             set({ generating: false, generatingProgress: '' })

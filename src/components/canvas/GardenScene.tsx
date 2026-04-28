@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import * as THREE from 'three'
 import { Canvas, useLoader, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html } from '@react-three/drei'
@@ -22,6 +23,7 @@ function GardenCloud({
     memId: string
     title: string
 }) {
+    const router = useRouter()
     const geometry = useLoader(PLYLoader, url)
     const materialRef = useRef<THREE.ShaderMaterial>(null)
 
@@ -83,7 +85,8 @@ function GardenCloud({
     })
 
     const handleClick = () => {
-        useStore.getState().set({ viewMode: 'detail', activeMemoryId: memId })
+        useStore.getState().set({ activeMemoryId: memId })
+        router.push(`/${encodeURIComponent(memId)}`)
     }
 
     return (

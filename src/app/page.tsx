@@ -1,93 +1,123 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useStore } from '@/store'
 import { Gallery } from '@/components/dom/Gallery'
-import { UI } from '@/components/dom/UI'
-import { DebugPanel } from '@/components/dom/DebugPanel'
 import { AnimatePresence, motion } from 'framer-motion'
+import { LayoutGrid, Map, Trees, type LucideIcon } from 'lucide-react'
 
-const Scene = dynamic(() => import('@/components/canvas/Scene'), { ssr: false })
 const GardenScene = dynamic(() => import('@/components/canvas/GardenScene'), { ssr: false })
 
+type HomeViewMode = 'garden' | 'grid' | 'spatial' | 'about'
+
+const HOME_TABS: Array<{
+  id: HomeViewMode
+  label: string
+  Icon?: LucideIcon
+}> = [
+  { id: 'garden', label: 'garden', Icon: Trees },
+  { id: 'grid', label: 'grid', Icon: LayoutGrid },
+  { id: 'spatial', label: 'spatial', Icon: Map },
+  { id: 'about', label: 'about' },
+]
+
 export default function Home() {
-  const viewMode = useStore((s) => s.viewMode)
-  const [mounted, setMounted] = useState(false)
+  const { viewMode, memories, fetchMemories, set } = useStore((s) => s)
 
-  // Prevent hydration mismatch: render nothing until client is ready
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (memories.length === 0) fetchMemories()
+  }, [memories.length, fetchMemories])
 
-  if (!mounted) {
-    return <main className="h-screen w-full bg-[#0a0a0a]" />
-  }
+  const activeHomeView: HomeViewMode = viewMode === 'detail' ? 'grid' : viewMode
 
   return (
-    <main className="h-screen w-full bg-[#0a0a0a] text-white relative overflow-hidden">
-      {/* 3D Canvas — detail mode */}
-      <AnimatePresence>
-        {viewMode === 'detail' && (
-          <motion.div
-            key="scene"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-0"
-          >
-            <Scene />
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <main className="h-screen w-full bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
+      <header className="z-40 border-b border-white/5 bg-[#0a0a0a]/85 px-6 py-5 backdrop-blur-md sm:px-8">
+        <h1
+          className="text-3xl text-white/90"
+          style={{ fontFamily: 'VcrEas, sans-serif' }}
+        >
+          memories relived
+        </h1>
+        <nav
+          className="mt-4 flex w-full gap-1 overflow-x-auto rounded-lg border border-white/10 bg-white/[0.03] p-1 sm:w-fit"
+          aria-label="Layout modes"
+        >
+          {HOME_TABS.map(({ id, label, Icon }) => {
+            const active = activeHomeView === id
 
-      {/* 3D Canvas — garden mode */}
-      <AnimatePresence>
-        {viewMode === 'garden' && (
-          <motion.div
-            key="garden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-0"
-          >
-            <GardenScene />
-            {/* Back to list button */}
-            <div className="absolute top-6 right-8 z-10">
-              <motion.button
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={() => useStore.getState().set({ viewMode: 'grid' })}
-                className="flex items-center gap-2 text-white/60 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-white/10 cursor-pointer"
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => set({ viewMode: id })}
+                className={`flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm tracking-wide transition-colors ${
+                  active
+                    ? 'bg-white/90 text-[#0a0a0a]'
+                    : 'text-white/50 hover:bg-white/[0.06] hover:text-white/85'
+                }`}
               >
-                <span className="text-sm tracking-wider">← Gallery</span>
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {Icon && <Icon size={15} strokeWidth={1.7} aria-hidden="true" />}
+                <span>{label}</span>
+              </button>
+            )
+          })}
+        </nav>
+      </header>
 
-      {/* Gallery overlay */}
-      <AnimatePresence>
-        {viewMode === 'grid' && (
-          <motion.div
-            key="gallery"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 z-20"
-          >
-            <Gallery />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <section className="relative min-h-0 flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {activeHomeView === 'grid' && (
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              className="absolute inset-0 z-20"
+            >
+              <Gallery />
+            </motion.div>
+          )}
 
-      {/* Detail mode UI */}
-      <UI />
+          {activeHomeView === 'garden' && (
+            <motion.div
+              key="garden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              className="absolute inset-0 z-10"
+            >
+              <GardenScene />
+            </motion.div>
+          )}
 
-      {/* Debug panel */}
-      <DebugPanel />
+          {activeHomeView === 'spatial' && (
+            <motion.div
+              key="spatial"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              className="absolute inset-0 bg-[#0a0a0a]"
+            />
+          )}
+
+          {activeHomeView === 'about' && (
+            <motion.div
+              key="about"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              className="absolute inset-0 bg-[#0a0a0a]"
+            />
+          )}
+        </AnimatePresence>
+      </section>
     </main>
   )
 }

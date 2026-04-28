@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { put } from '@vercel/blob'
 import { getDb } from '@/db'
 
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
         )
 
         // 4) Create memory record in Neon DB
-        const memoryId = `mem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const memoryId = `mem_${randomUUID().replaceAll('-', '').slice(0, 20)}`
         const title = imageFile.name.replace(/\.[^.]+$/, '') // filename without extension
 
         const sql = getDb()

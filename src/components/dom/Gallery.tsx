@@ -1,21 +1,18 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStore } from '@/store'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { Upload, X, Trees, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Upload, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 
 gsap.registerPlugin(useGSAP)
 
 export function Gallery() {
-    const { memories, fetchMemories, set, generating, generatingProgress, generateMemory } = useStore((s) => s)
+    const { memories, set, generating, generatingProgress, generateMemory } = useStore((s) => s)
+    const router = useRouter()
     const gridRef = useRef<HTMLDivElement>(null)
-
-    // 挂载时从 API 加载 memories
-    useEffect(() => {
-        if (memories.length === 0) fetchMemories()
-    }, [memories.length, fetchMemories])
     const [uploadOpen, setUploadOpen] = useState(false)
     const [dragOver, setDragOver] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
@@ -78,14 +75,13 @@ export function Gallery() {
         setUploadSuccess(false)
 
         try {
-            await generateMemory(file)
+            const memoryId = await generateMemory(file)
             setUploadSuccess(true)
-            // Auto-close popover after brief success state
-            setTimeout(() => closePopover(), 800)
+            router.push(`/${encodeURIComponent(memoryId)}`)
         } catch (err) {
             setUploadError(err instanceof Error ? err.message : 'Generation failed')
         }
-    }, [generateMemory, closePopover])
+    }, [generateMemory, router])
 
     // Drag-drop handlers
     const onDragOver = useCallback((e: React.DragEvent) => {
@@ -105,24 +101,17 @@ export function Gallery() {
     }, [handleFile])
 
     return (
-        <div className="absolute inset-0 bg-[#0a0a0a] overflow-y-auto">
-            {/* Header */}
-            <header className="sticky top-0 z-30 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 px-8 py-6">
-                <h1
-                    className="text-3xl text-white/90"
-                    style={{ fontFamily: 'VcrEas, sans-serif' }}
-                >
-                    memories relived
-                </h1>
-            </header>
-
+        <div className="h-full bg-[#0a0a0a] overflow-y-auto">
             {/* Grid */}
             <div className="px-8 py-10">
                 <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                     {memories.map((mem) => (
                         <button
                             key={mem.id}
-                            onClick={() => set({ viewMode: 'detail', activeMemoryId: mem.id })}
+                            onClick={() => {
+                                set({ activeMemoryId: mem.id })
+                                router.push(`/${encodeURIComponent(mem.id)}`)
+                            }}
                             className="tile group relative aspect-[4/3] overflow-hidden rounded-lg bg-black/50 border border-white/5 hover:border-white/20 transition-all duration-500 cursor-pointer text-left"
                         >
                             {/* Thumbnail Image */}
@@ -267,17 +256,6 @@ export function Gallery() {
                             <span>Save Memory</span>
                         </>
                     )}
-                </button>
-            </div>
-
-            {/* Memory Garden toggle — bottom left */}
-            <div className="fixed bottom-8 left-8 z-40">
-                <button
-                    onClick={() => set({ viewMode: 'garden' })}
-                    className="flex items-center gap-2 text-white/60 hover:text-white transition-all duration-300 bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-white/10 cursor-pointer"
-                >
-                    <Trees size={16} strokeWidth={1.5} />
-                    <span className="text-sm tracking-wider">Memory Garden</span>
                 </button>
             </div>
 

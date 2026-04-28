@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Pencil, Check } from 'lucide-react'
 
 export function UI() {
     const { viewMode, activeMemoryId, memories, set, updateMemory } = useStore((s) => s)
+    const router = useRouter()
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
 
     // 编辑状态
@@ -49,7 +51,10 @@ export function UI() {
                 <motion.button
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    onClick={() => set({ viewMode: 'grid', activeMemoryId: null })}
+                    onClick={() => {
+                        set({ viewMode: 'grid', activeMemoryId: null })
+                        router.push('/')
+                    }}
                     className="pointer-events-auto flex items-center gap-2 text-white/60 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-white/10"
                 >
                     <ArrowLeft size={16} />
