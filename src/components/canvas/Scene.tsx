@@ -101,7 +101,7 @@ function SceneContent() {
             </R3FErrorBoundary>
             {/* InfoTiles temporarily disabled — coords need re-picking */}
             {postFxEnabled && (
-                <EffectComposer frameBufferType={THREE.UnsignedByteType}>
+                <EffectComposer>
                     {/* Bloom only catches near-fully-saturated pixels (the */}
                     {/* highlight shader clips to ~1.0 by design); base */}
                     {/* model can't reach this threshold so it's untouched. */}
