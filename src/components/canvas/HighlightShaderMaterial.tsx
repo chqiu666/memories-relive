@@ -29,10 +29,11 @@ const HighlightShaderMaterial = shaderMaterial(
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
-      // Same size attenuation formula as base — no 1.6x bloat that was
-      // causing highlight sprites to overpaint surrounding base pixels.
-      gl_PointSize = uSize * uPixelRatio * (150.0 / -mvPosition.z);
-      gl_PointSize = max(gl_PointSize, 1.0);
+      // Slightly larger than base (1.3x) so highlights pop visually
+      // without flooding the base model — the previous 1.6x version
+      // bled noticeably onto surrounding pixels.
+      gl_PointSize = uSize * 1.3 * uPixelRatio * (150.0 / -mvPosition.z);
+      gl_PointSize = max(gl_PointSize, 1.5);
     }
   `,
   /* glsl */ `

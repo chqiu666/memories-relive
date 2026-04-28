@@ -83,7 +83,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     activeTileId: null,
 
-    hlGlowIntensity: 1.15,
+    hlGlowIntensity: 2.0,
 
     postFxEnabled: true,
     vignetteEnabled: true,

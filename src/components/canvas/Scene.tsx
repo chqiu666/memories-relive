@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Vignette, ChromaticAberration, TiltShift } from '@react-three/postprocessing'
+import { EffectComposer, Vignette, ChromaticAberration, TiltShift, Bloom } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
 import { PLYLoader } from 'three-stdlib'
@@ -101,7 +101,16 @@ function SceneContent() {
             </R3FErrorBoundary>
             {/* InfoTiles temporarily disabled — coords need re-picking */}
             {postFxEnabled && (
-                <EffectComposer>
+                <EffectComposer frameBufferType={THREE.UnsignedByteType}>
+                    {/* Bloom only catches near-fully-saturated pixels (the */}
+                    {/* highlight shader clips to ~1.0 by design); base */}
+                    {/* model can't reach this threshold so it's untouched. */}
+                    <Bloom
+                        intensity={0.6}
+                        luminanceThreshold={0.95}
+                        luminanceSmoothing={0.05}
+                        mipmapBlur
+                    />
                     <Vignette
                         offset={0.3}
                         darkness={vignetteEnabled ? vignetteIntensity : 0}
