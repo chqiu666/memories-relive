@@ -21,6 +21,13 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Memories Relive",
   description: "3D point cloud memory viewer",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.png", type: "image/png", sizes: "512x512" },
+    ],
+  },
 };
 
 export default function RootLayout({
