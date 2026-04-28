@@ -17,6 +17,13 @@ export function DebugPanel() {
         orbitTarget,
         raycastMode,
         pickedCoord,
+        vignetteEnabled,
+        vignetteIntensity,
+        chromaticEnabled,
+        chromaticIntensity,
+        edgeBlurEnabled,
+        edgeBlurIntensity,
+        hlGlowIntensity,
         set,
     } = useStore((s) => s)
 
@@ -126,6 +133,61 @@ export function DebugPanel() {
                             </div>
                         </div>
 
+                        {/* Effects */}
+                        <div className="px-4 py-3 space-y-4 border-b border-white/5">
+                            <span className="text-[10px] text-white/30 uppercase tracking-widest">Effects</span>
+
+                            {/* HL Glow */}
+                            <SliderControl
+                                label="HL Glow"
+                                value={hlGlowIntensity}
+                                min={0.1}
+                                max={3.0}
+                                step={0.05}
+                                displayValue={hlGlowIntensity.toFixed(2)}
+                                onChange={(v) => set({ hlGlowIntensity: v })}
+                            />
+
+                            {/* Vignette */}
+                            <EffectControl
+                                label="Vignette"
+                                enabled={vignetteEnabled}
+                                onToggle={() => set({ vignetteEnabled: !vignetteEnabled })}
+                                value={vignetteIntensity}
+                                min={0.05}
+                                max={1.5}
+                                step={0.05}
+                                displayValue={vignetteIntensity.toFixed(2)}
+                                onChange={(v) => set({ vignetteIntensity: v })}
+                            />
+
+                            {/* Chromatic Aberration */}
+                            <EffectControl
+                                label="Chromatic"
+                                enabled={chromaticEnabled}
+                                onToggle={() => set({ chromaticEnabled: !chromaticEnabled })}
+                                value={chromaticIntensity}
+                                min={0.0005}
+                                max={0.02}
+                                step={0.0005}
+                                displayValue={chromaticIntensity.toFixed(4)}
+                                onChange={(v) => set({ chromaticIntensity: v })}
+                            />
+
+                            {/* Edge Blur */}
+                            <EffectControl
+                                label="Edge Blur"
+                                enabled={edgeBlurEnabled}
+                                onToggle={() => set({ edgeBlurEnabled: !edgeBlurEnabled })}
+                                value={edgeBlurIntensity}
+                                min={0.05}
+                                max={3.0}
+                                step={0.05}
+                                displayValue={edgeBlurIntensity.toFixed(2)}
+                                onChange={(v) => set({ edgeBlurIntensity: v })}
+                            />
+                        </div>
+
                         {/* Coord Picker */}
                         <div className="px-4 py-3 space-y-3">
                             <div className="flex items-center justify-between">
@@ -194,8 +256,8 @@ function SliderControl({
 }) {
     return (
         <div>
-            <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-white/40 uppercase tracking-wide">{label}</span>
+            <div className={`flex items-center justify-between ${label ? 'mb-1.5' : 'mb-0.5 justify-end'}`}>
+                {label && <span className="text-[11px] text-white/40 uppercase tracking-wide">{label}</span>}
                 <span className="text-xs font-mono text-white/70">{displayValue}</span>
             </div>
             <input
@@ -215,6 +277,45 @@ function SliderControl({
                     [&::-webkit-slider-thumb]:transition-colors
                     [&::-webkit-slider-thumb]:shadow-md"
             />
+        </div>
+    )
+}
+
+function EffectControl({
+    label, enabled, onToggle, value, min, max, step, displayValue, onChange
+}: {
+    label: string
+    enabled: boolean
+    onToggle: () => void
+    value: number
+    min: number
+    max: number
+    step: number
+    displayValue: string
+    onChange: (v: number) => void
+}) {
+    return (
+        <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+                <span className="text-[11px] text-white/40 uppercase tracking-wide">{label}</span>
+                <button
+                    onClick={onToggle}
+                    className={`w-8 h-4 rounded-full transition-colors duration-200 cursor-pointer ${enabled ? 'bg-emerald-500/60' : 'bg-white/10'}`}
+                >
+                    <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${enabled ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                </button>
+            </div>
+            {enabled && (
+                <SliderControl
+                    label=""
+                    value={value}
+                    min={min}
+                    max={max}
+                    step={step}
+                    displayValue={displayValue}
+                    onChange={onChange}
+                />
+            )}
         </div>
     )
 }

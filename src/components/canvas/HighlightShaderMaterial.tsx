@@ -4,12 +4,11 @@ import { extend } from '@react-three/fiber'
 
 const HighlightShaderMaterial = shaderMaterial(
   {
-    uTime: 0,
     uPixelRatio: 1,
     uSize: 0.5,
-    uBrightness: 1.5,       // brightness multiplier on original vertex color
+    uBrightness: 1.5,   // color boost on highlight points (driven by hlGlowIntensity)
+    uHaloStrength: 0.6, // soft outer halo intensity (faux glow without bloom)
   },
-  // ─── Vertex Shader ───
   /* glsl */ `
     uniform float uPixelRatio;
     uniform float uSize;
@@ -22,30 +21,31 @@ const HighlightShaderMaterial = shaderMaterial(
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
-      // Size attenuation (match base model)
-      gl_PointSize = uSize * uPixelRatio * (150.0 / -mvPosition.z);
-      gl_PointSize = max(gl_PointSize, 1.5);
+      // Slightly larger than base model points so the halo extends past the underlying surface
+      gl_PointSize = uSize * 1.6 * uPixelRatio * (150.0 / -mvPosition.z);
+      gl_PointSize = max(gl_PointSize, 2.0);
     }
   `,
-  // ─── Fragment Shader ───
-  // Simple brightness boost — no sweep, no bloom needed
   /* glsl */ `
     uniform float uBrightness;
+    uniform float uHaloStrength;
 
     varying vec3 vColor;
 
     void main() {
-      // Circular point shape
       vec2 cxy = 2.0 * gl_PointCoord - 1.0;
-      float r = dot(cxy, cxy);
-      if (r > 1.0) discard;
+      float r2 = dot(cxy, cxy);
+      if (r2 > 1.0) discard;
 
-      float delta = fwidth(r);
-      float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r);
+      // Inner core: full brightness within ~50% radius
+      float core = 1.0 - smoothstep(0.25, 0.55, r2);
+      // Outer halo: soft glow falloff from 0.55 → 1.0
+      float halo = (1.0 - smoothstep(0.55, 1.0, r2)) * uHaloStrength;
 
-      // Brighten original color
       vec3 brightColor = vColor * uBrightness;
 
+      // Core fully opaque, halo translucent — fakes a glow without bloom
+      float alpha = core + halo * 0.7;
       gl_FragColor = vec4(brightColor, alpha);
     }
   `

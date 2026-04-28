@@ -25,6 +25,7 @@ export function HighlightPointCloud({
     const hlFullSample = useStore((s) => s.hlFullSample)
     const samplePercent = useStore((s) => s.samplePercent)
     const pointSize = useStore((s) => s.pointSize)
+    const hlGlowIntensity = useStore((s) => s.hlGlowIntensity)
 
 
     const effectiveSample = hlFullSample ? 100 : samplePercent
@@ -85,6 +86,7 @@ export function HighlightPointCloud({
         if (materialRef.current) {
             materialRef.current.uniforms.uPixelRatio.value = state.gl.getPixelRatio()
             materialRef.current.uniforms.uSize.value = pointSize
+            materialRef.current.uniforms.uBrightness.value = hlGlowIntensity
         }
     })
 
@@ -92,13 +94,14 @@ export function HighlightPointCloud({
         <group position={position}>
             <points
                 scale={scale}
+                renderOrder={1}
             >
                 <primitive object={processedGeometry} />
                 {/* @ts-ignore */}
                 <highlightShaderMaterial
                     ref={materialRef}
                     transparent
-                    depthWrite
+                    depthWrite={false}
                     depthTest
                     vertexColors
                     blending={THREE.NormalBlending}

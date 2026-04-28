@@ -36,6 +36,17 @@ interface AppState {
     // Info tiles
     activeTileId: string | null
 
+    // Highlight glow
+    hlGlowIntensity: number
+
+    // Post-processing effects
+    vignetteEnabled: boolean
+    vignetteIntensity: number
+    chromaticEnabled: boolean
+    chromaticIntensity: number
+    edgeBlurEnabled: boolean
+    edgeBlurIntensity: number
+
     set: (state: Partial<AppState>) => void
 
     // 异步 actions
@@ -71,6 +82,14 @@ export const useStore = create<AppState>((set, get) => ({
 
     activeTileId: null,
 
+    hlGlowIntensity: 1.15,
+
+    vignetteEnabled: true,
+    vignetteIntensity: 0.45,
+    chromaticEnabled: true,
+    chromaticIntensity: 0.003,
+    edgeBlurEnabled: true,
+    edgeBlurIntensity: 0.5,
     set: (state) => set(state),
 
     // 从 API 获取所有 memories

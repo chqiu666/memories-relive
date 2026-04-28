@@ -4,6 +4,8 @@ import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import { EffectComposer, Vignette, ChromaticAberration, TiltShift } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
 import { PLYLoader } from 'three-stdlib'
 import { useStore } from '@/store'
@@ -30,7 +32,6 @@ class R3FErrorBoundary extends Component<
     }
 }
 
-/** Derive the hl- URL from a base model URL, e.g. /models/foo.ply → /models/hl-foo.ply */
 function getHlUrl(baseUrl: string): string {
     const parts = baseUrl.split('/')
     const filename = parts.pop()!
@@ -55,7 +56,6 @@ function OrbitTargetSync({ url, controlsRef }: {
         if (orbitTarget === 'origin') {
             controls.target.set(0, 0, 0)
         } else {
-            // Compute bounding box center from PLY geometry
             const posAttr = geometry.getAttribute('position')
             if (posAttr) {
                 const geo = new THREE.BufferGeometry()
@@ -77,6 +77,12 @@ function OrbitTargetSync({ url, controlsRef }: {
 
 function SceneContent() {
     const { activeMemoryId, memories } = useStore((s) => s)
+    const vignetteEnabled = useStore((s) => s.vignetteEnabled)
+    const vignetteIntensity = useStore((s) => s.vignetteIntensity)
+    const chromaticEnabled = useStore((s) => s.chromaticEnabled)
+    const chromaticIntensity = useStore((s) => s.chromaticIntensity)
+    const edgeBlurEnabled = useStore((s) => s.edgeBlurEnabled)
+    const edgeBlurIntensity = useStore((s) => s.edgeBlurIntensity)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
     const controlsRef = useRef<any>(null)
 
@@ -93,6 +99,26 @@ function SceneContent() {
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>
             {/* InfoTiles temporarily disabled — coords need re-picking */}
+            <EffectComposer>
+                <Vignette
+                    offset={0.3}
+                    darkness={vignetteEnabled ? vignetteIntensity : 0}
+                    blendFunction={BlendFunction.NORMAL}
+                />
+                <ChromaticAberration
+                    offset={new THREE.Vector2(
+                        chromaticEnabled ? chromaticIntensity : 0,
+                        chromaticEnabled ? chromaticIntensity : 0
+                    )}
+                    radialModulation
+                    modulationOffset={0.2}
+                />
+                <TiltShift
+                    blur={edgeBlurEnabled ? edgeBlurIntensity : 0}
+                    focusArea={0.5}
+                    feather={0.3}
+                />
+            </EffectComposer>
             <CoordPicker />
             <FpsMonitor />
         </>
