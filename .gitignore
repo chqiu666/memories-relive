@@ -46,3 +46,6 @@ modal_backend/output/
 __pycache__/
 *.pyc
 .env*.local
+
+# local agent worktrees
+.claude/worktrees/
