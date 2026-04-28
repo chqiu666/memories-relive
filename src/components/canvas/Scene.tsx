@@ -4,8 +4,8 @@ import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Vignette, ChromaticAberration, TiltShift, Bloom, ToneMapping } from '@react-three/postprocessing'
-import { BlendFunction, ToneMappingMode } from 'postprocessing'
+import { EffectComposer, Vignette, ChromaticAberration, TiltShift, Bloom } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
 import { PLYLoader } from 'three-stdlib'
 import { useStore } from '@/store'
@@ -104,10 +104,10 @@ function SceneContent() {
                 <EffectComposer>
                     {/* Bloom only catches near-fully-saturated pixels (the */}
                     {/* highlight shader clips to ~1.0 by design); base */}
-                    {/* model can't reach this threshold so it's untouched. */}
+                    {/* model stays <= 1.0 after color management, so it's untouched. */}
                     <Bloom
                         intensity={0.6}
-                        luminanceThreshold={0.95}
+                        luminanceThreshold={1.05}
                         luminanceSmoothing={0.05}
                         mipmapBlur
                     />
@@ -129,13 +129,6 @@ function SceneContent() {
                         focusArea={0.5}
                         feather={0.3}
                     />
-                    {/* Re-applies the ACES curve that r3f Canvas would */}
-                    {/* normally apply via gl.toneMapping — bypassed when */}
-                    {/* the scene is routed through EffectComposer. */}
-                    {/* Without this, linear values are written straight */}
-                    {/* to canvas as sRGB and the whole model looks ~1.5x */}
-                    {/* brighter (the "whitewash"). */}
-                    <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
                 </EffectComposer>
             )}
             <CoordPicker />
@@ -147,11 +140,13 @@ function SceneContent() {
 export default function Scene() {
     return (
         <Canvas
+            flat
             camera={{ position: [0, 0, 15], fov: 50, near: 0.1, far: 1000 }}
             style={{ background: '#0a0a0a' }}
             dpr={[1, 2]}
             gl={{ antialias: true }}
         >
+            <color attach="background" args={['#0a0a0a']} />
             <Suspense fallback={null}>
                 <R3FErrorBoundary>
                     <SceneContent />

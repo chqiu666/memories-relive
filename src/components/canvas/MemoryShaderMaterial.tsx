@@ -5,7 +5,7 @@ import { extend } from '@react-three/fiber'
 const MemoryShaderMaterial = shaderMaterial(
   {
     uTime: 0,
-    uColor: new THREE.Color(0.8, 0.85, 0.9), // Fallback color (light grey-blue)
+    uColor: new THREE.Vector3(0.8, 0.85, 0.9), // Fallback display-space color (light grey-blue)
     uPixelRatio: 1,
     uSize: 0.5, // Base point size
   },
@@ -56,10 +56,14 @@ const MemoryShaderMaterial = shaderMaterial(
       float delta = fwidth(r);
       float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r);
 
-      // Use vertex color; fallback to uniform if vertex color is missing (black)
-      vec3 finalColor = (length(vColor) > 0.01) ? vColor : uColor;
+      // PLYLoader from three-stdlib stores vertex colors as normalized sRGB.
+      // Convert to linear here so direct rendering and EffectComposer agree.
+      vec3 colorSRGB = (length(vColor) > 0.01) ? vColor : uColor;
+      vec3 finalColor = sRGBTransferEOTF(vec4(max(colorSRGB, vec3(0.0)), 1.0)).rgb;
 
       gl_FragColor = vec4(finalColor, alpha);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }
   `
 )

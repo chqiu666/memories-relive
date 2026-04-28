@@ -50,12 +50,15 @@ const HighlightShaderMaterial = shaderMaterial(
       float delta = fwidth(r2);
       float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r2);
 
-      // Lift dark colors more than bright ones (sqrt gamma curve) so
-      // low-saturation highlight PLYs (e.g. concrete-grey on grey base)
-      // become visible without overblowing already-bright colors.
-      vec3 lifted = sqrt(max(vColor, vec3(0.0)));
-      vec3 brightColor = lifted * uBrightness;
+      // Lift in display space, then convert the PLY sRGB color into
+      // linear output so EffectComposer doesn't encode it a second time.
+      vec3 liftedSRGB = sqrt(max(vColor, vec3(0.0)));
+      vec3 brightSRGB = liftedSRGB * uBrightness;
+      vec3 brightColor = sRGBTransferEOTF(vec4(max(brightSRGB, vec3(0.0)), 1.0)).rgb;
+
       gl_FragColor = vec4(brightColor, alpha);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }
   `
 )
