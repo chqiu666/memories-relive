@@ -7,23 +7,17 @@ const HighlightShaderMaterial = shaderMaterial(
     uTime: 0,
     uPixelRatio: 1,
     uSize: 0.5,
-    uBrightness: 1.6,       // color boost (not pure white — keeps original hue)
-    uSweepSpeed: 0.8,       // how fast the light band sweeps
-    uSweepWidth: 2.0,       // width of the sweep band
+    uBrightness: 1.5,       // brightness multiplier on original vertex color
   },
   // ─── Vertex Shader ───
-  // NO position displacement — highlight points are locked to base model
   /* glsl */ `
-    uniform float uTime;
     uniform float uPixelRatio;
     uniform float uSize;
 
     varying vec3 vColor;
-    varying vec3 vWorldPos;
 
     void main() {
       vColor = color;
-      vWorldPos = position;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
@@ -34,15 +28,11 @@ const HighlightShaderMaterial = shaderMaterial(
     }
   `,
   // ─── Fragment Shader ───
-  // iOS-style light sweep: a bright band sweeps across the surface over time
+  // Simple brightness boost — no sweep, no bloom needed
   /* glsl */ `
-    uniform float uTime;
     uniform float uBrightness;
-    uniform float uSweepSpeed;
-    uniform float uSweepWidth;
 
     varying vec3 vColor;
-    varying vec3 vWorldPos;
 
     void main() {
       // Circular point shape
@@ -53,30 +43,10 @@ const HighlightShaderMaterial = shaderMaterial(
       float delta = fwidth(r);
       float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r);
 
-      // Light sweep: a band of brightness that moves across the model
-      // Uses world-space diagonal (x + z) for sweep direction
-      float sweepPos = vWorldPos.x + vWorldPos.z;
-      float sweepCenter = uTime * uSweepSpeed;
-      float sweepDist = abs(sweepPos - sweepCenter);
+      // Brighten original color
+      vec3 brightColor = vColor * uBrightness;
 
-      // Wrap sweep using mod so it repeats smoothly
-      float period = 20.0;
-      float wrappedCenter = mod(sweepCenter, period) - period * 0.5;
-      sweepDist = abs(sweepPos - wrappedCenter);
-
-      // Smooth intensity falloff from sweep center
-      float sweepIntensity = smoothstep(uSweepWidth, 0.0, sweepDist);
-
-      // Base highlight: original color * brightness
-      // Sweep adds extra glow on top
-      float totalBright = uBrightness + sweepIntensity * 1.5;
-      vec3 glowColor = vColor * totalBright;
-
-      // Soft edge for additive blending
-      float edgeFade = 1.0 - smoothstep(0.3, 1.0, r);
-      alpha *= edgeFade;
-
-      gl_FragColor = vec4(glowColor, alpha);
+      gl_FragColor = vec4(brightColor, alpha);
     }
   `
 )

@@ -2,7 +2,6 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
@@ -29,7 +28,6 @@ class R3FErrorBoundary extends Component<
     }
 }
 
-
 /** Derive the hl- URL from a base model URL, e.g. /models/foo.ply → /models/hl-foo.ply */
 function getHlUrl(baseUrl: string): string {
     const parts = baseUrl.split('/')
@@ -44,6 +42,7 @@ function SceneContent() {
     if (!activeMemory || !activeMemory.model_url) return null
 
     const hlUrl = getHlUrl(activeMemory.model_url)
+
     const tiles = activeMemory.traces?.map((t) => ({
         position: t.position,
         label: t.label,
@@ -68,14 +67,6 @@ function SceneContent() {
                     forceDir={tile.expandDir}
                 />
             ))}
-            <EffectComposer>
-                <Bloom
-                    intensity={0.25}
-                    luminanceThreshold={0.9}
-                    luminanceSmoothing={0.3}
-                    mipmapBlur
-                />
-            </EffectComposer>
             <CoordPicker />
             <FpsMonitor />
         </>

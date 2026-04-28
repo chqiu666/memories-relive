@@ -83,7 +83,6 @@ export function HighlightPointCloud({
     // Update uniforms every frame
     useFrame((state) => {
         if (materialRef.current) {
-            materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime()
             materialRef.current.uniforms.uPixelRatio.value = state.gl.getPixelRatio()
             materialRef.current.uniforms.uSize.value = pointSize
         }
@@ -102,7 +101,7 @@ export function HighlightPointCloud({
                     depthWrite
                     depthTest
                     vertexColors
-                    blending={THREE.AdditiveBlending}
+                    blending={THREE.NormalBlending}
                 />
             </points>
         </group>
