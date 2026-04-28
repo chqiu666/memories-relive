@@ -49,8 +49,11 @@ const HighlightShaderMaterial = shaderMaterial(
       float delta = fwidth(r2);
       float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r2);
 
-      // Pure color boost — no halo bleed onto base model.
-      vec3 brightColor = vColor * uBrightness;
+      // Lift dark colors more than bright ones (sqrt gamma curve) so
+      // low-saturation highlight PLYs (e.g. concrete-grey on grey base)
+      // become visible without overblowing already-bright colors.
+      vec3 lifted = sqrt(max(vColor, vec3(0.0)));
+      vec3 brightColor = lifted * uBrightness;
       gl_FragColor = vec4(brightColor, alpha);
     }
   `

@@ -77,6 +77,7 @@ function OrbitTargetSync({ url, controlsRef }: {
 
 function SceneContent() {
     const { activeMemoryId, memories } = useStore((s) => s)
+    const postFxEnabled = useStore((s) => s.postFxEnabled)
     const vignetteEnabled = useStore((s) => s.vignetteEnabled)
     const vignetteIntensity = useStore((s) => s.vignetteIntensity)
     const chromaticEnabled = useStore((s) => s.chromaticEnabled)
@@ -99,26 +100,28 @@ function SceneContent() {
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>
             {/* InfoTiles temporarily disabled — coords need re-picking */}
-            <EffectComposer>
-                <Vignette
-                    offset={0.3}
-                    darkness={vignetteEnabled ? vignetteIntensity : 0}
-                    blendFunction={BlendFunction.NORMAL}
-                />
-                <ChromaticAberration
-                    offset={new THREE.Vector2(
-                        chromaticEnabled ? chromaticIntensity : 0,
-                        chromaticEnabled ? chromaticIntensity : 0
-                    )}
-                    radialModulation
-                    modulationOffset={0.2}
-                />
-                <TiltShift
-                    blur={edgeBlurEnabled ? edgeBlurIntensity : 0}
-                    focusArea={0.5}
-                    feather={0.3}
-                />
-            </EffectComposer>
+            {postFxEnabled && (
+                <EffectComposer>
+                    <Vignette
+                        offset={0.3}
+                        darkness={vignetteEnabled ? vignetteIntensity : 0}
+                        blendFunction={BlendFunction.NORMAL}
+                    />
+                    <ChromaticAberration
+                        offset={new THREE.Vector2(
+                            chromaticEnabled ? chromaticIntensity : 0,
+                            chromaticEnabled ? chromaticIntensity : 0
+                        )}
+                        radialModulation
+                        modulationOffset={0.2}
+                    />
+                    <TiltShift
+                        blur={edgeBlurEnabled ? edgeBlurIntensity : 0}
+                        focusArea={0.5}
+                        feather={0.3}
+                    />
+                </EffectComposer>
+            )}
             <CoordPicker />
             <FpsMonitor />
         </>

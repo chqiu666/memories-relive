@@ -40,6 +40,7 @@ interface AppState {
     hlGlowIntensity: number
 
     // Post-processing effects
+    postFxEnabled: boolean       // master switch — wraps the entire EffectComposer
     vignetteEnabled: boolean
     vignetteIntensity: number
     chromaticEnabled: boolean
@@ -84,6 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     hlGlowIntensity: 1.15,
 
+    postFxEnabled: true,
     vignetteEnabled: true,
     vignetteIntensity: 0.45,
     chromaticEnabled: true,
