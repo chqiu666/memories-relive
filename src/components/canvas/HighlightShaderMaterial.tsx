@@ -4,12 +4,15 @@ import { extend } from '@react-three/fiber'
 
 const HighlightShaderMaterial = shaderMaterial(
   {
+    uTime: 0,
     uPixelRatio: 1,
     uSize: 0.5,
-    uBrightness: 1.5,   // color boost on highlight points (driven by hlGlowIntensity)
-    uHaloStrength: 0.6, // soft outer halo intensity (faux glow without bloom)
+    uBrightness: 1.5, // color boost on highlight points (driven by hlGlowIntensity)
   },
+  // Vertex shader — MUST match MemoryShaderMaterial's wave so highlights move
+  // in lockstep with the base model.
   /* glsl */ `
+    uniform float uTime;
     uniform float uPixelRatio;
     uniform float uSize;
 
@@ -18,17 +21,22 @@ const HighlightShaderMaterial = shaderMaterial(
     void main() {
       vColor = color;
 
-      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vec3 pos = position;
+      // Identical wave to base model
+      float wave = sin(uTime * 0.8 + pos.x * 0.3 + pos.y * 0.3) * 0.02;
+      pos.y += wave;
+
+      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
-      // Slightly larger than base model points so the halo extends past the underlying surface
-      gl_PointSize = uSize * 1.6 * uPixelRatio * (150.0 / -mvPosition.z);
-      gl_PointSize = max(gl_PointSize, 2.0);
+      // Same size attenuation formula as base — no 1.6x bloat that was
+      // causing highlight sprites to overpaint surrounding base pixels.
+      gl_PointSize = uSize * uPixelRatio * (150.0 / -mvPosition.z);
+      gl_PointSize = max(gl_PointSize, 1.0);
     }
   `,
   /* glsl */ `
     uniform float uBrightness;
-    uniform float uHaloStrength;
 
     varying vec3 vColor;
 
@@ -37,15 +45,12 @@ const HighlightShaderMaterial = shaderMaterial(
       float r2 = dot(cxy, cxy);
       if (r2 > 1.0) discard;
 
-      // Inner core: full brightness within ~50% radius
-      float core = 1.0 - smoothstep(0.25, 0.55, r2);
-      // Outer halo: soft glow falloff from 0.55 → 1.0
-      float halo = (1.0 - smoothstep(0.55, 1.0, r2)) * uHaloStrength;
+      // Soft circular sprite (matches base alpha falloff)
+      float delta = fwidth(r2);
+      float alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, r2);
 
+      // Pure color boost — no halo bleed onto base model.
       vec3 brightColor = vColor * uBrightness;
-
-      // Core fully opaque, halo translucent — fakes a glow without bloom
-      float alpha = core + halo * 0.7;
       gl_FragColor = vec4(brightColor, alpha);
     }
   `
