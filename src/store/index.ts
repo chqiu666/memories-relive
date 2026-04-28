@@ -55,7 +55,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     debugOpen: false,
 
-    pointSize: 0.10,
+    pointSize: 0.02,
     samplePercent: 30,
     hlFullSample: false,
 

@@ -57,7 +57,8 @@ function SceneContent() {
             <R3FErrorBoundary>
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>
-            {tiles?.map((tile, i) => (
+            {/* Skip tiles for concrete-surface until coords are re-picked */}
+            {activeMemory.id !== 'concrete-surface' && tiles?.map((tile, i) => (
                 <InfoTile
                     key={`${activeMemory.id}-tile-${i}`}
                     id={`${activeMemory.id}-tile-${i}`}
