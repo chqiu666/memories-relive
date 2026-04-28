@@ -7,7 +7,6 @@ import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
 import { CoordPicker } from './CoordPicker'
-import { InfoTile } from './InfoTile'
 import { FpsMonitor } from './FpsMonitor'
 
 /** Swallows render errors from children (e.g. missing PLY files) */
@@ -43,13 +42,6 @@ function SceneContent() {
 
     const hlUrl = getHlUrl(activeMemory.model_url)
 
-    const tiles = activeMemory.traces?.map((t) => ({
-        position: t.position,
-        label: t.label,
-        description: t.description,
-        expandDir: t.expand_dir as 'up' | 'down' | undefined,
-    }))
-
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
@@ -57,17 +49,7 @@ function SceneContent() {
             <R3FErrorBoundary>
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>
-            {/* Skip tiles for concrete-surface until coords are re-picked */}
-            {activeMemory.id !== 'concrete-surface' && tiles?.map((tile, i) => (
-                <InfoTile
-                    key={`${activeMemory.id}-tile-${i}`}
-                    id={`${activeMemory.id}-tile-${i}`}
-                    position={tile.position}
-                    label={tile.label}
-                    description={tile.description}
-                    forceDir={tile.expandDir}
-                />
-            ))}
+            {/* InfoTiles temporarily disabled — coords need re-picking */}
             <CoordPicker />
             <FpsMonitor />
         </>
