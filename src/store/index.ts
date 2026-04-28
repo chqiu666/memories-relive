@@ -21,6 +21,7 @@ interface AppState {
     pointSize: number
     samplePercent: number
     hlFullSample: boolean
+    orbitTarget: 'origin' | 'bbox'  // orbit controls look-at target
 
     // 运行时统计
     fps: number
@@ -58,6 +59,7 @@ export const useStore = create<AppState>((set, get) => ({
     pointSize: 0.02,
     samplePercent: 30,
     hlFullSample: false,
+    orbitTarget: 'bbox',
 
     fps: 0,
     totalPoints: 0,

@@ -1,8 +1,11 @@
 'use client'
 
-import { Canvas } from '@react-three/fiber'
+import { useRef, useEffect } from 'react'
+import * as THREE from 'three'
+import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Suspense, Component, type ReactNode } from 'react'
+import { PLYLoader } from 'three-stdlib'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
@@ -34,9 +37,48 @@ function getHlUrl(baseUrl: string): string {
     return [...parts, `hl-${filename}`].join('/')
 }
 
+/**
+ * Syncs OrbitControls.target to either [0,0,0] or the model's bounding-box center.
+ * Does NOT move the model — only changes where the camera looks/orbits around.
+ */
+function OrbitTargetSync({ url, controlsRef }: {
+    url: string
+    controlsRef: React.RefObject<any>
+}) {
+    const geometry = useLoader(PLYLoader, url)
+    const orbitTarget = useStore((s) => s.orbitTarget)
+
+    useEffect(() => {
+        const controls = controlsRef.current
+        if (!controls) return
+
+        if (orbitTarget === 'origin') {
+            controls.target.set(0, 0, 0)
+        } else {
+            // Compute bounding box center from PLY geometry
+            const posAttr = geometry.getAttribute('position')
+            if (posAttr) {
+                const geo = new THREE.BufferGeometry()
+                geo.setAttribute('position', posAttr)
+                geo.computeBoundingBox()
+                const box = geo.boundingBox!
+                const cx = (box.min.x + box.max.x) / 2
+                const cy = (box.min.y + box.max.y) / 2
+                const cz = (box.min.z + box.max.z) / 2
+                controls.target.set(cx, cy, cz)
+                geo.dispose()
+            }
+        }
+        controls.update()
+    }, [geometry, orbitTarget, controlsRef])
+
+    return null
+}
+
 function SceneContent() {
     const { activeMemoryId, memories } = useStore((s) => s)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
+    const controlsRef = useRef<any>(null)
 
     if (!activeMemory || !activeMemory.model_url) return null
 
@@ -44,8 +86,9 @@ function SceneContent() {
 
     return (
         <>
-            <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
+            <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={activeMemory.model_url!} opacity={1} />
+            <OrbitTargetSync url={activeMemory.model_url!} controlsRef={controlsRef} />
             <R3FErrorBoundary>
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>

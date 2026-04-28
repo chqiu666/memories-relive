@@ -14,6 +14,7 @@ export function DebugPanel() {
         pointSize,
         samplePercent,
         hlFullSample,
+        orbitTarget,
         raycastMode,
         pickedCoord,
         set,
@@ -101,6 +102,27 @@ export function DebugPanel() {
                                     <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${hlFullSample ? 'translate-x-4.5' : 'translate-x-0.5'
                                         }`} />
                                 </button>
+                            </div>
+
+                            {/* Orbit Target radio */}
+                            <div className="space-y-1.5">
+                                <span className="text-[11px] text-white/40 uppercase tracking-wide">Orbit Target</span>
+                                <div className="flex gap-3">
+                                    {(['origin', 'bbox'] as const).map((mode) => (
+                                        <label key={mode} className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="orbitTarget"
+                                                checked={orbitTarget === mode}
+                                                onChange={() => set({ orbitTarget: mode })}
+                                                className="w-3 h-3 accent-blue-500 cursor-pointer"
+                                            />
+                                            <span className="text-[11px] text-white/60">
+                                                {mode === 'origin' ? '[0,0,0]' : 'BBox Center'}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
