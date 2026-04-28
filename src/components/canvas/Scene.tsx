@@ -4,8 +4,8 @@ import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Vignette, ChromaticAberration, TiltShift, Bloom } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
+import { EffectComposer, Vignette, ChromaticAberration, TiltShift, Bloom, ToneMapping } from '@react-three/postprocessing'
+import { BlendFunction, ToneMappingMode } from 'postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
 import { PLYLoader } from 'three-stdlib'
 import { useStore } from '@/store'
@@ -129,6 +129,13 @@ function SceneContent() {
                         focusArea={0.5}
                         feather={0.3}
                     />
+                    {/* Re-applies the ACES curve that r3f Canvas would */}
+                    {/* normally apply via gl.toneMapping — bypassed when */}
+                    {/* the scene is routed through EffectComposer. */}
+                    {/* Without this, linear values are written straight */}
+                    {/* to canvas as sRGB and the whole model looks ~1.5x */}
+                    {/* brighter (the "whitewash"). */}
+                    <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
                 </EffectComposer>
             )}
             <CoordPicker />

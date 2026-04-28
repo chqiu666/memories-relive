@@ -29,11 +29,11 @@ const HighlightShaderMaterial = shaderMaterial(
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       gl_Position = projectionMatrix * mvPosition;
 
-      // Slightly larger than base (1.3x) so highlights pop visually
-      // without flooding the base model — the previous 1.6x version
-      // bled noticeably onto surrounding pixels.
-      gl_PointSize = uSize * 1.3 * uPixelRatio * (150.0 / -mvPosition.z);
-      gl_PointSize = max(gl_PointSize, 1.5);
+      // Match base point size 1:1 — any larger sprite bleeds the
+      // (now very bright) highlight color onto surrounding base pixels
+      // and reads as whitewash on the main model.
+      gl_PointSize = uSize * uPixelRatio * (150.0 / -mvPosition.z);
+      gl_PointSize = max(gl_PointSize, 1.0);
     }
   `,
   /* glsl */ `
