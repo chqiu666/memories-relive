@@ -137,29 +137,33 @@ def _load_image_from_bytes(image_bytes: bytes, filename: str):
     import numpy as np
     import pillow_heif
     from pathlib import Path
-    from PIL import ExifTags, Image
+    from PIL import ExifTags, Image, ImageOps
 
     file_ext = Path(filename).suffix.lower()
     buffer = io.BytesIO(image_bytes)
 
-    if file_ext in [".heic"]:
+    if file_ext in [".heic", ".heif"]:
         heif_file = pillow_heif.open_heif(buffer, convert_hdr_to_8bit=True)
         img_pil = heif_file.to_pillow()
     else:
         img_pil = Image.open(buffer)
 
-    # Extract EXIF data
-    img_exif = img_pil.getexif().get_ifd(0x8769)
+    # Extract EXIF before transposing. Orientation lives in the main IFD for
+    # most phone photos; focal length usually lives in the Exif IFD.
+    img_exif = img_pil.getexif()
     exif_dict = {ExifTags.TAGS[k]: v for k, v in img_exif.items() if k in ExifTags.TAGS}
+    try:
+        exif_ifd = img_exif.get_ifd(0x8769)
+        exif_dict.update(
+            {ExifTags.TAGS[k]: v for k, v in exif_ifd.items() if k in ExifTags.TAGS}
+        )
+    except Exception:
+        pass
 
-    # Handle image orientation
-    exif_orientation = exif_dict.get("Orientation", 1)
-    if exif_orientation == 3:
-        img_pil = img_pil.transpose(Image.Transpose.ROTATE_180)
-    elif exif_orientation == 6:
-        img_pil = img_pil.transpose(Image.Transpose.ROTATE_270)
-    elif exif_orientation == 8:
-        img_pil = img_pil.transpose(Image.Transpose.ROTATE_90)
+    # Normalize phone/camera EXIF orientation before inference. If this is not
+    # applied, portrait captures commonly arrive rotated 90 degrees in pixels,
+    # which makes the generated point cloud appear rotated around the view axis.
+    img_pil = ImageOps.exif_transpose(img_pil)
 
     # Extract focal length
     f_35mm = exif_dict.get("FocalLengthIn35mmFilm", exif_dict.get("FocalLenIn35mmFilm"))
@@ -181,16 +185,6 @@ def _load_image_from_bytes(image_bytes: bytes, filename: str):
     f_px = f_35mm * np.sqrt(width**2.0 + height**2.0) / np.sqrt(36**2 + 24**2)
 
     return img, f_px
-
-
-def _convert_heic_to_jpeg(image_bytes: bytes) -> bytes:
-    """Convert HEIC bytes to JPEG bytes."""
-    import pillow_heif
-    heif_file = pillow_heif.open_heif(io.BytesIO(image_bytes), convert_hdr_to_8bit=True)
-    img_pil = heif_file.to_pillow()
-    buf = io.BytesIO()
-    img_pil.save(buf, format="JPEG", quality=95)
-    return buf.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -228,13 +222,6 @@ def predict_gaussian_splat(image_bytes: bytes, filename: str) -> tuple[str, byte
     from plyfile import PlyData, PlyElement
 
     logger.info("Processing %s on Modal GPU", filename)
-
-    # Auto-convert HEIC to JPEG
-    from pathlib import Path as _Path
-    if _Path(filename).suffix.lower() in (".heic", ".heif"):
-        logger.info("Converting HEIC to JPEG: %s", filename)
-        image_bytes = _convert_heic_to_jpeg(image_bytes)
-        filename = _Path(filename).stem + ".jpg"
 
     # Load image from bytes
     image, f_px = _load_image_from_bytes(image_bytes, filename)
@@ -315,6 +302,13 @@ def predict_gaussian_splat(image_bytes: bytes, filename: str) -> tuple[str, byte
     logger.info("Serializing to PLY (standard point cloud format)")
 
     xyz = gaussians.mean_vectors.flatten(0, 1).detach().cpu().numpy()  # [N, 3]
+
+    # SHARP predicts in OpenCV camera coordinates: x right, y down, z forward.
+    # This app renders PLY point clouds directly in Three.js/WebGL coordinates:
+    # x right, y up, z backward from the camera. Convert at export time so newly
+    # generated models match the existing bundled point clouds and annotations.
+    xyz[:, 1] *= -1
+    xyz[:, 2] *= -1
 
     # Convert colors: model outputs linear RGB, convert to sRGB then to 0-255
     colors_linear = gaussians.colors.flatten(0, 1).detach().cpu()      # [N, 3]
