@@ -1,5 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 
+let memoryAssetColumnsReady: Promise<void> | null = null
+
 /**
  * 获取 Neon SQL 客户端
  * 使用 DATABASE_URL 环境变量（Vercel 自动注入，本地从 .env.local 读取）
@@ -12,6 +14,19 @@ export function getDb() {
     return neon(databaseUrl)
 }
 
+export async function ensureMemoryAssetColumns(sql: ReturnType<typeof getDb>) {
+    memoryAssetColumnsReady ??= (async () => {
+        await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_full_url TEXT`
+        await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_web_url TEXT`
+        await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_garden_url TEXT`
+    })().catch((error) => {
+        memoryAssetColumnsReady = null
+        throw error
+    })
+
+    return memoryAssetColumnsReady
+}
+
 // ─── 类型定义 ───
 
 export interface MemoryRow {
@@ -20,6 +35,9 @@ export interface MemoryRow {
     description: string
     thumbnail_url: string | null
     model_url: string | null
+    model_full_url: string | null
+    model_web_url: string | null
+    model_garden_url: string | null
     created_at: string
     updated_at: string
 }

@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { put } from '@vercel/blob'
-import { getDb } from '@/db'
+import { ensureMemoryAssetColumns, getDb } from '@/db'
+import { addPlySampleSuffix, downsamplePlyBytes } from '@/lib/ply'
 
 /**
  * POST /api/generate
  *
- * Full pipeline: image → Modal ml-sharp → PLY → Vercel Blob → Neon DB
+ * Full pipeline: image → Modal ml-sharp → full PLY → sampled PLYs → Vercel Blob → Neon DB
  *
  * Request: multipart/form-data with 'image' field
- * Returns: { id, title, model_url, thumbnail_url }
+ * Returns: { id, title, model_url, model_full_url, model_web_url, model_garden_url, thumbnail_url }
  */
 
 // Increase Vercel function timeout (default is 10s, ml-sharp needs ~60s)
@@ -73,12 +74,34 @@ export async function POST(request: Request) {
             modalRes.headers.get('X-Output-Filename') ||
             imageFile.name.replace(/\.[^.]+$/, '.ply')
 
-        // 2) Upload PLY to Vercel Blob
-        const plyBlob = await put(
-            `models/${outputFilename}`,
-            new Blob([plyBytes]),
-            { access: 'public', addRandomSuffix: true }
+        const webFilename = addPlySampleSuffix(outputFilename, 30)
+        const gardenFilename = addPlySampleSuffix(outputFilename, 10)
+        const webPlyBytes = downsamplePlyBytes(plyBytes, 30)
+        const gardenPlyBytes = downsamplePlyBytes(plyBytes, 10)
+
+        console.log(
+            `[generate] Sampled PLYs: web30=${(webPlyBytes.byteLength / 1024).toFixed(0)} KB, garden10=${(gardenPlyBytes.byteLength / 1024).toFixed(0)} KB`
         )
+
+        // 2) Upload full + sampled PLY files to Vercel Blob.
+        // Full stays as the backup/source of truth; UI loads the smaller files.
+        const [fullPlyBlob, webPlyBlob, gardenPlyBlob] = await Promise.all([
+            put(
+                `models/full/${outputFilename}`,
+                new Blob([plyBytes]),
+                { access: 'public', addRandomSuffix: true }
+            ),
+            put(
+                `models/web/${webFilename}`,
+                new Blob([webPlyBytes]),
+                { access: 'public', addRandomSuffix: true }
+            ),
+            put(
+                `models/garden/${gardenFilename}`,
+                new Blob([gardenPlyBytes]),
+                { access: 'public', addRandomSuffix: true }
+            ),
+        ])
 
         // 3) Upload original image as thumbnail to Vercel Blob
         const thumbBlob = await put(
@@ -92,9 +115,28 @@ export async function POST(request: Request) {
         const title = imageFile.name.replace(/\.[^.]+$/, '') // filename without extension
 
         const sql = getDb()
+        await ensureMemoryAssetColumns(sql)
         await sql`
-            INSERT INTO memories (id, title, description, thumbnail_url, model_url)
-            VALUES (${memoryId}, ${title}, ${'Generated from photo'}, ${thumbBlob.url}, ${plyBlob.url})
+            INSERT INTO memories (
+                id,
+                title,
+                description,
+                thumbnail_url,
+                model_url,
+                model_full_url,
+                model_web_url,
+                model_garden_url
+            )
+            VALUES (
+                ${memoryId},
+                ${title},
+                ${'Generated from photo'},
+                ${thumbBlob.url},
+                ${webPlyBlob.url},
+                ${fullPlyBlob.url},
+                ${webPlyBlob.url},
+                ${gardenPlyBlob.url}
+            )
         `
 
         console.log(`[generate] Created memory ${memoryId}: ${title}`)
@@ -102,7 +144,10 @@ export async function POST(request: Request) {
         return NextResponse.json({
             id: memoryId,
             title,
-            model_url: plyBlob.url,
+            model_url: webPlyBlob.url,
+            model_full_url: fullPlyBlob.url,
+            model_web_url: webPlyBlob.url,
+            model_garden_url: gardenPlyBlob.url,
             thumbnail_url: thumbBlob.url,
         }, { status: 201 })
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, type RefObject } from 'react'
 import * as THREE from 'three'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -8,6 +8,7 @@ import { EffectComposer, Vignette, ChromaticAberration, TiltShift, Bloom } from 
 import { BlendFunction } from 'postprocessing'
 import { Suspense, Component, type ReactNode } from 'react'
 import { PLYLoader } from 'three-stdlib'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
@@ -44,7 +45,7 @@ function getHlUrl(baseUrl: string): string {
  */
 function OrbitTargetSync({ url, controlsRef }: {
     url: string
-    controlsRef: React.RefObject<any>
+    controlsRef: RefObject<OrbitControlsImpl | null>
 }) {
     const geometry = useLoader(PLYLoader, url)
     const orbitTarget = useStore((s) => s.orbitTarget)
@@ -85,17 +86,19 @@ function SceneContent() {
     const edgeBlurEnabled = useStore((s) => s.edgeBlurEnabled)
     const edgeBlurIntensity = useStore((s) => s.edgeBlurIntensity)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
-    const controlsRef = useRef<any>(null)
+    const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
-    if (!activeMemory || !activeMemory.model_url) return null
+    const modelUrl = activeMemory?.model_web_url || activeMemory?.model_url || null
+    if (!activeMemory || !modelUrl) return null
 
-    const hlUrl = getHlUrl(activeMemory.model_url)
+    const hlUrl = getHlUrl(modelUrl)
+    const hasBackendWebSample = Boolean(activeMemory.model_web_url)
 
     return (
         <>
             <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.05} />
-            <PointCloud url={activeMemory.model_url!} opacity={1} />
-            <OrbitTargetSync url={activeMemory.model_url!} controlsRef={controlsRef} />
+            <PointCloud url={modelUrl} opacity={1} disableClientSampling={hasBackendWebSample} />
+            <OrbitTargetSync url={modelUrl} controlsRef={controlsRef} />
             <R3FErrorBoundary>
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>

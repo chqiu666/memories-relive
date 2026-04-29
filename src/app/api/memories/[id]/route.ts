@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/db'
+import { ensureMemoryAssetColumns, getDb } from '@/db'
 
 /**
  * GET /api/memories/:id
@@ -12,9 +12,20 @@ export async function GET(
     try {
         const { id } = await params
         const sql = getDb()
+        await ensureMemoryAssetColumns(sql)
 
         const memoryRows = await sql`
-            SELECT id, title, description, thumbnail_url, model_url, created_at, updated_at
+            SELECT
+                id,
+                title,
+                description,
+                thumbnail_url,
+                model_url,
+                model_full_url,
+                model_web_url,
+                model_garden_url,
+                created_at,
+                updated_at
             FROM memories WHERE id = ${id}
         `
 
@@ -52,9 +63,9 @@ export async function PATCH(
         const { id } = await params
         const body = await request.json()
         const sql = getDb()
+        await ensureMemoryAssetColumns(sql)
 
-        // 动态构建更新字段
-        const updates: string[] = []
+        // 动态收集允许更新的字段
         const values: Record<string, unknown> = {}
 
         if (body.title !== undefined) {
@@ -68,6 +79,15 @@ export async function PATCH(
         }
         if (body.model_url !== undefined) {
             values.model_url = body.model_url
+        }
+        if (body.model_full_url !== undefined) {
+            values.model_full_url = body.model_full_url
+        }
+        if (body.model_web_url !== undefined) {
+            values.model_web_url = body.model_web_url
+        }
+        if (body.model_garden_url !== undefined) {
+            values.model_garden_url = body.model_garden_url
         }
 
         if (Object.keys(values).length === 0) {
@@ -87,6 +107,15 @@ export async function PATCH(
         }
         if (values.model_url !== undefined) {
             await sql`UPDATE memories SET model_url = ${values.model_url as string}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.model_full_url !== undefined) {
+            await sql`UPDATE memories SET model_full_url = ${values.model_full_url as string}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.model_web_url !== undefined) {
+            await sql`UPDATE memories SET model_web_url = ${values.model_web_url as string}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.model_garden_url !== undefined) {
+            await sql`UPDATE memories SET model_garden_url = ${values.model_garden_url as string}, updated_at = now() WHERE id = ${id}`
         }
 
         return NextResponse.json({ success: true })

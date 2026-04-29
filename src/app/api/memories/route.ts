@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDb, type MemoryWithTraces, type TraceRow } from '@/db'
+import { ensureMemoryAssetColumns, getDb, type MemoryWithTraces, type TraceRow } from '@/db'
 
 /**
  * GET /api/memories
@@ -8,10 +8,21 @@ import { getDb, type MemoryWithTraces, type TraceRow } from '@/db'
 export async function GET() {
     try {
         const sql = getDb()
+        await ensureMemoryAssetColumns(sql)
 
         // 查询所有 memories
         const memoryRows = await sql`
-            SELECT id, title, description, thumbnail_url, model_url, created_at, updated_at
+            SELECT
+                id,
+                title,
+                description,
+                thumbnail_url,
+                model_url,
+                model_full_url,
+                model_web_url,
+                model_garden_url,
+                created_at,
+                updated_at
             FROM memories
             ORDER BY created_at ASC
         `
@@ -47,6 +58,9 @@ export async function GET() {
             description: row.description as string,
             thumbnail_url: row.thumbnail_url as string | null,
             model_url: row.model_url as string | null,
+            model_full_url: row.model_full_url as string | null,
+            model_web_url: row.model_web_url as string | null,
+            model_garden_url: row.model_garden_url as string | null,
             created_at: row.created_at as string,
             updated_at: row.updated_at as string,
             traces: traceMap.get(row.id as string) || [],
@@ -69,7 +83,16 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { id, title, description, thumbnail_url, model_url } = body
+        const {
+            id,
+            title,
+            description,
+            thumbnail_url,
+            model_url,
+            model_full_url,
+            model_web_url,
+            model_garden_url,
+        } = body
 
         if (!id || !title) {
             return NextResponse.json(
@@ -79,9 +102,28 @@ export async function POST(request: Request) {
         }
 
         const sql = getDb()
+        await ensureMemoryAssetColumns(sql)
         await sql`
-            INSERT INTO memories (id, title, description, thumbnail_url, model_url)
-            VALUES (${id}, ${title}, ${description || ''}, ${thumbnail_url || null}, ${model_url || null})
+            INSERT INTO memories (
+                id,
+                title,
+                description,
+                thumbnail_url,
+                model_url,
+                model_full_url,
+                model_web_url,
+                model_garden_url
+            )
+            VALUES (
+                ${id},
+                ${title},
+                ${description || ''},
+                ${thumbnail_url || null},
+                ${model_url || model_web_url || null},
+                ${model_full_url || null},
+                ${model_web_url || model_url || null},
+                ${model_garden_url || null}
+            )
         `
 
         return NextResponse.json({ success: true, id }, { status: 201 })

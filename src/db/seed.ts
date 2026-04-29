@@ -25,10 +25,17 @@ async function seed() {
             description TEXT NOT NULL DEFAULT '',
             thumbnail_url TEXT,
             model_url   TEXT,
+            model_full_url TEXT,
+            model_web_url TEXT,
+            model_garden_url TEXT,
             created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     `
+
+    await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_full_url TEXT`
+    await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_web_url TEXT`
+    await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_garden_url TEXT`
 
     // 建表：traces
     await sql`
@@ -56,13 +63,14 @@ async function seed() {
     for (const mem of memories) {
         // Upsert memory
         await sql`
-            INSERT INTO memories (id, title, description, thumbnail_url, model_url)
-            VALUES (${mem.id}, ${mem.title}, ${mem.description}, ${mem.thumbnail}, ${mem.modelSrc})
+            INSERT INTO memories (id, title, description, thumbnail_url, model_url, model_full_url)
+            VALUES (${mem.id}, ${mem.title}, ${mem.description}, ${mem.thumbnail}, ${mem.modelSrc}, ${mem.modelSrc})
             ON CONFLICT (id) DO UPDATE SET
                 title = EXCLUDED.title,
                 description = EXCLUDED.description,
                 thumbnail_url = EXCLUDED.thumbnail_url,
                 model_url = EXCLUDED.model_url,
+                model_full_url = EXCLUDED.model_full_url,
                 updated_at = now()
         `
         console.log(`  📦 Memory: ${mem.id}`)

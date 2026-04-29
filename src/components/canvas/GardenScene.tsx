@@ -11,17 +11,19 @@ import { useStore } from '@/store'
 
 import '../canvas/MemoryShaderMaterial'
 
-/** Single point cloud in the garden — hardcoded 10% sampling */
+/** Single point cloud in the garden. New uploads arrive pre-sampled; old models fall back to 10%. */
 function GardenCloud({
     url,
     gardenPosition,
     memId,
     title,
+    disableClientSampling,
 }: {
     url: string
     gardenPosition: [number, number, number]
     memId: string
     title: string
+    disableClientSampling: boolean
 }) {
     const router = useRouter()
     const geometry = useLoader(PLYLoader, url)
@@ -32,7 +34,7 @@ function GardenCloud({
         if (!posAttr) return { processedGeometry: geometry, center: [0, 0, 0] as [number, number, number] }
 
         const totalCount = posAttr.count
-        const stride = 10 // 10% sampling
+        const stride = disableClientSampling ? 1 : 10 // Old full-size models still get 10% client sampling.
         const sampledCount = Math.ceil(totalCount / stride)
 
         const geo = new THREE.BufferGeometry()
@@ -74,7 +76,7 @@ function GardenCloud({
             processedGeometry: geo,
             center: [-cx, -cy, -cz] as [number, number, number],
         }
-    }, [geometry])
+    }, [geometry, disableClientSampling])
 
     useFrame((state) => {
         if (materialRef.current) {
@@ -93,7 +95,7 @@ function GardenCloud({
         <group position={gardenPosition}>
             <points position={center}>
                 <primitive object={processedGeometry} />
-                {/* @ts-ignore */}
+                {/* @ts-expect-error Custom shader material is registered at runtime. */}
                 <memoryShaderMaterial
                     ref={materialRef}
                     transparent
@@ -159,15 +161,27 @@ function GardenContent() {
     return (
         <>
             <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
-            {memories.filter((m) => m.model_url).map((mem, i) => (
-                <GardenCloud
-                    key={mem.id}
-                    url={mem.model_url!}
-                    gardenPosition={GARDEN_POSITIONS[i] || [i * 10, 0, 0]}
-                    memId={mem.id}
-                    title={mem.title}
-                />
-            ))}
+            {memories
+                .map((mem) => ({
+                    mem,
+                    url: mem.model_garden_url || mem.model_url,
+                    hasBackendGardenSample: Boolean(mem.model_garden_url),
+                }))
+                .filter((item): item is {
+                    mem: typeof item.mem
+                    url: string
+                    hasBackendGardenSample: boolean
+                } => Boolean(item.url))
+                .map(({ mem, url, hasBackendGardenSample }, i) => (
+                    <GardenCloud
+                        key={mem.id}
+                        url={url}
+                        gardenPosition={GARDEN_POSITIONS[i] || [i * 10, 0, 0]}
+                        memId={mem.id}
+                        title={mem.title}
+                        disableClientSampling={hasBackendGardenSample}
+                    />
+                ))}
         </>
     )
 }
