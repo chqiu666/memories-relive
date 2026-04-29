@@ -24,6 +24,8 @@ export async function GET() {
                 photo_latitude,
                 photo_longitude,
                 photo_location_source,
+                creator_name,
+                visibility,
                 created_at,
                 updated_at
             FROM memories
@@ -67,6 +69,8 @@ export async function GET() {
             photo_latitude: row.photo_latitude as number | null,
             photo_longitude: row.photo_longitude as number | null,
             photo_location_source: row.photo_location_source as string | null,
+            creator_name: (row.creator_name as string | null) || null,
+            visibility: (row.visibility as string) || 'public',
             created_at: row.created_at as string,
             updated_at: row.updated_at as string,
             traces: traceMap.get(row.id as string) || [],
@@ -101,6 +105,8 @@ export async function POST(request: Request) {
             photo_latitude,
             photo_longitude,
             photo_location_source,
+            creator_name,
+            visibility,
         } = body
 
         if (!id || !title) {
@@ -124,7 +130,9 @@ export async function POST(request: Request) {
                 model_garden_url,
                 photo_latitude,
                 photo_longitude,
-                photo_location_source
+                photo_location_source,
+                creator_name,
+                visibility
             )
             VALUES (
                 ${id},
@@ -137,7 +145,9 @@ export async function POST(request: Request) {
                 ${model_garden_url || null},
                 ${photo_latitude ?? null},
                 ${photo_longitude ?? null},
-                ${photo_location_source || null}
+                ${photo_location_source || null},
+                ${creator_name || null},
+                ${visibility || 'public'}
             )
         `
 

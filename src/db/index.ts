@@ -22,6 +22,8 @@ export async function ensureMemoryAssetColumns(sql: ReturnType<typeof getDb>) {
         await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_latitude DOUBLE PRECISION`
         await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_longitude DOUBLE PRECISION`
         await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_location_source TEXT`
+        await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS creator_name TEXT`
+        await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'public'`
     })().catch((error) => {
         memoryColumnsReady = null
         throw error
@@ -44,6 +46,8 @@ export interface MemoryRow {
     photo_latitude: number | null
     photo_longitude: number | null
     photo_location_source: string | null
+    creator_name: string | null
+    visibility: string
     created_at: string
     updated_at: string
 }

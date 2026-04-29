@@ -6,17 +6,17 @@ import { useStore } from '@/store'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { Upload, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { UploadPreviewModal } from './UploadPreviewModal'
 
 gsap.registerPlugin(useGSAP)
 
 export function Gallery() {
-    const { memories, set, generating, generatingProgress, generateMemory } = useStore((s) => s)
+    const { memories, set, generating, generatingProgress, generateMemory, pendingMemory, discardPendingMemory } = useStore((s) => s)
     const router = useRouter()
     const gridRef = useRef<HTMLDivElement>(null)
     const [uploadOpen, setUploadOpen] = useState(false)
     const [dragOver, setDragOver] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
-    const [uploadSuccess, setUploadSuccess] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -53,17 +53,15 @@ export function Gallery() {
                 onComplete: () => {
                     setUploadOpen(false)
                     setUploadError(null)
-                    setUploadSuccess(false)
                 },
             })
         } else {
             setUploadOpen(false)
             setUploadError(null)
-            setUploadSuccess(false)
         }
     }, [])
 
-    // Handle file selection
+    // Handle file selection — generates assets, then shows preview modal
     const handleFile = useCallback(async (file: File) => {
         const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/bmp', 'image/tiff']
         if (!validTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|heic|heif|bmp|tiff)$/i)) {
@@ -72,16 +70,15 @@ export function Gallery() {
         }
 
         setUploadError(null)
-        setUploadSuccess(false)
 
         try {
-            const memoryId = await generateMemory(file)
-            setUploadSuccess(true)
-            router.push(`/${encodeURIComponent(memoryId)}`)
+            // This now returns PendingMemory (assets only, no DB record)
+            await generateMemory(file)
+            // Preview modal will auto-show because pendingMemory is now set
         } catch (err) {
             setUploadError(err instanceof Error ? err.message : 'Generation failed')
         }
-    }, [generateMemory, router])
+    }, [generateMemory])
 
     // Drag-drop handlers
     const onDragOver = useCallback((e: React.DragEvent) => {
@@ -132,12 +129,9 @@ export function Gallery() {
                                 >
                                     {mem.title}
                                 </h2>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <div className="w-3.5 h-3.5 rounded-full bg-white/20 flex-shrink-0" />
-                                    <span className="text-[11px] text-white/40 group-hover:text-white/60 transition-colors">
-                                        Anonymous
-                                    </span>
-                                </div>
+                                <span className="text-[11px] text-white/40 group-hover:text-white/60 transition-colors mt-1 inline-block">
+                                    by {mem.creator_name || 'Anonymous'}
+                                </span>
                             </div>
 
                             {/* Hover glow */}
@@ -178,16 +172,8 @@ export function Gallery() {
                             </div>
                         )}
 
-                        {/* Success state */}
-                        {!generating && uploadSuccess && (
-                            <div className="flex flex-col items-center gap-2 py-6">
-                                <CheckCircle2 size={28} className="text-green-400" />
-                                <p className="text-xs text-white/70">Memory created!</p>
-                            </div>
-                        )}
-
                         {/* Upload area — default state */}
-                        {!generating && !uploadSuccess && (
+                        {!generating && (
                             <>
                                 <div
                                     onDragOver={onDragOver}
@@ -264,6 +250,17 @@ export function Gallery() {
                 <div
                     className="fixed inset-0 z-30"
                     onClick={closePopover}
+                />
+            )}
+
+            {/* Upload Preview Modal — shown after generation completes */}
+            {pendingMemory && (
+                <UploadPreviewModal
+                    pending={pendingMemory}
+                    onClose={() => {
+                        discardPendingMemory()
+                        closePopover()
+                    }}
                 />
             )}
         </div>

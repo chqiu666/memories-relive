@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { randomUUID } from 'node:crypto'
 import { put } from '@vercel/blob'
-import { ensureMemoryAssetColumns, getDb } from '@/db'
 import { extractExifLocation, type PhotoLocation } from '@/lib/exif'
 import { fallbackMemoryMetadata, generateMemoryMetadataFromImage } from '@/lib/memoryMetadata'
 import { addPlySampleSuffix, downsamplePlyBytes } from '@/lib/ply'
@@ -133,47 +131,15 @@ export async function POST(request: Request) {
             { access: 'public', addRandomSuffix: true }
         )
 
-        // 4) Create memory record in Neon DB
-        const memoryId = `mem_${randomUUID().replaceAll('-', '').slice(0, 20)}`
+        // 4) Await AI-generated metadata
         const metadata = await metadataPromise
         const title = metadata.title || fallbackMetadata.title
         const description = metadata.description || fallbackMetadata.description
 
-        const sql = getDb()
-        await ensureMemoryAssetColumns(sql)
-        await sql`
-            INSERT INTO memories (
-                id,
-                title,
-                description,
-                thumbnail_url,
-                model_url,
-                model_full_url,
-                model_web_url,
-                model_garden_url,
-                photo_latitude,
-                photo_longitude,
-                photo_location_source
-            )
-            VALUES (
-                ${memoryId},
-                ${title},
-                ${description},
-                ${thumbBlob.url},
-                ${webPlyBlob.url},
-                ${fullPlyBlob.url},
-                ${webPlyBlob.url},
-                ${gardenPlyBlob.url},
-                ${photoLocation?.latitude ?? null},
-                ${photoLocation?.longitude ?? null},
-                ${photoLocation?.source ?? null}
-            )
-        `
+        console.log(`[generate] Assets ready — returning for user confirmation`)
 
-        console.log(`[generate] Created memory ${memoryId}: ${title}`)
-
+        // Return asset URLs + metadata — DB insert deferred to POST /api/memories
         return NextResponse.json({
-            id: memoryId,
             title,
             description,
             model_url: webPlyBlob.url,
@@ -184,7 +150,7 @@ export async function POST(request: Request) {
             photo_latitude: photoLocation?.latitude ?? null,
             photo_longitude: photoLocation?.longitude ?? null,
             photo_location_source: photoLocation?.source ?? null,
-        }, { status: 201 })
+        }, { status: 200 })
 
     } catch (error) {
         console.error('POST /api/generate failed:', error)

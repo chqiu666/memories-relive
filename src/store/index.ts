@@ -1,6 +1,20 @@
 import { create } from 'zustand'
 import type { MemoryWithTraces } from '@/db'
 
+/** Data returned by POST /api/generate — assets ready, not yet persisted */
+export interface PendingMemory {
+    title: string
+    description: string
+    thumbnail_url: string | null
+    model_url: string | null
+    model_full_url: string | null
+    model_web_url: string | null
+    model_garden_url: string | null
+    photo_latitude: number | null
+    photo_longitude: number | null
+    photo_location_source: string | null
+}
+
 interface AppState {
     // 视图状态
     viewMode: 'grid' | 'detail' | 'garden' | 'spatial' | 'about'
@@ -13,6 +27,7 @@ interface AppState {
     // Generation state
     generating: boolean
     generatingProgress: string
+    pendingMemory: PendingMemory | null
 
     // Debug 面板
     debugOpen: boolean
@@ -53,7 +68,9 @@ interface AppState {
     // 异步 actions
     fetchMemories: () => Promise<void>
     updateMemory: (id: string, data: Partial<{ title: string; description: string }>) => Promise<void>
-    generateMemory: (imageFile: File) => Promise<string>
+    generateMemory: (imageFile: File) => Promise<PendingMemory>
+    confirmMemory: (pending: PendingMemory, overrides: { title: string; creator_name: string; visibility: string }) => Promise<string>
+    discardPendingMemory: () => void
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -65,6 +82,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     generating: false,
     generatingProgress: '',
+    pendingMemory: null,
 
     debugOpen: false,
 
@@ -128,7 +146,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
     },
 
-    // 上传图片 → Modal 推理 → 创建新 memory
+    // Step 1: Upload image → ML inference → returns asset URLs (no DB record)
     generateMemory: async (imageFile: File) => {
         set({ generating: true, generatingProgress: 'Uploading image...' })
         try {
@@ -148,45 +166,80 @@ export const useStore = create<AppState>((set, get) => ({
                     const errBody = await res.json()
                     errorMsg = errBody.error || errorMsg
                 } catch {
-                    // Response isn't JSON — use status text
                     const text = await res.text().catch(() => '')
                     if (text) errorMsg = text
                 }
                 throw new Error(errorMsg)
             }
 
-            const result = await res.json()
+            const result = await res.json() as PendingMemory
 
-            // Add new memory to local store
-            const newMemory = {
-                id: result.id,
-                title: result.title,
-                description: result.description || 'Generated from photo',
-                thumbnail_url: result.thumbnail_url,
-                model_url: result.model_url,
-                model_full_url: result.model_full_url,
-                model_web_url: result.model_web_url,
-                model_garden_url: result.model_garden_url,
-                photo_latitude: result.photo_latitude,
-                photo_longitude: result.photo_longitude,
-                photo_location_source: result.photo_location_source,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                traces: [],
-            }
-
-            const memories = [...get().memories, newMemory]
+            // Store as pending — user must confirm via preview modal
             set({
-                memories,
                 generating: false,
                 generatingProgress: '',
-                activeMemoryId: result.id,
+                pendingMemory: result,
             })
-            return result.id as string
+            return result
         } catch (err) {
             console.error('generateMemory failed:', err)
             set({ generating: false, generatingProgress: '' })
-            throw err // re-throw for UI error handling
+            throw err
         }
+    },
+
+    // Step 2: User confirms in preview modal → persist to DB + add to local store
+    confirmMemory: async (pending, overrides) => {
+        const memoryId = `mem_${crypto.randomUUID().replaceAll('-', '').slice(0, 20)}`
+
+        const payload = {
+            id: memoryId,
+            title: overrides.title,
+            description: pending.description,
+            thumbnail_url: pending.thumbnail_url,
+            model_url: pending.model_url,
+            model_full_url: pending.model_full_url,
+            model_web_url: pending.model_web_url,
+            model_garden_url: pending.model_garden_url,
+            photo_latitude: pending.photo_latitude,
+            photo_longitude: pending.photo_longitude,
+            photo_location_source: pending.photo_location_source,
+            creator_name: overrides.creator_name || null,
+            visibility: overrides.visibility,
+        }
+
+        const res = await fetch('/api/memories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ error: 'Failed to save' }))
+            throw new Error(errBody.error || 'Failed to save memory')
+        }
+
+        // Add to local store
+        const newMemory: MemoryWithTraces = {
+            ...payload,
+            creator_name: overrides.creator_name || null,
+            visibility: overrides.visibility,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            traces: [],
+        }
+
+        const memories = [...get().memories, newMemory]
+        set({
+            memories,
+            pendingMemory: null,
+            activeMemoryId: memoryId,
+        })
+        return memoryId
+    },
+
+    // Discard pending memory without saving
+    discardPendingMemory: () => {
+        set({ pendingMemory: null })
     },
 }))

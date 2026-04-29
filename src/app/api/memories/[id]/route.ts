@@ -27,6 +27,8 @@ export async function GET(
                 photo_latitude,
                 photo_longitude,
                 photo_location_source,
+                creator_name,
+                visibility,
                 created_at,
                 updated_at
             FROM memories WHERE id = ${id}
@@ -101,6 +103,12 @@ export async function PATCH(
         if (body.photo_location_source !== undefined) {
             values.photo_location_source = body.photo_location_source
         }
+        if (body.creator_name !== undefined) {
+            values.creator_name = body.creator_name
+        }
+        if (body.visibility !== undefined) {
+            values.visibility = body.visibility
+        }
 
         if (Object.keys(values).length === 0) {
             return NextResponse.json({ error: '没有需要更新的字段' }, { status: 400 })
@@ -137,6 +145,12 @@ export async function PATCH(
         }
         if (values.photo_location_source !== undefined) {
             await sql`UPDATE memories SET photo_location_source = ${values.photo_location_source as string | null}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.creator_name !== undefined) {
+            await sql`UPDATE memories SET creator_name = ${values.creator_name as string | null}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.visibility !== undefined) {
+            await sql`UPDATE memories SET visibility = ${values.visibility as string}, updated_at = now() WHERE id = ${id}`
         }
 
         return NextResponse.json({ success: true })
