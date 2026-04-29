@@ -27,11 +27,6 @@ interface LocatedMemory {
     longitude: number
 }
 
-interface HoverPoint {
-    x: number
-    y: number
-}
-
 export function MapboxMemoryMap({
     memories,
     variant,
@@ -45,11 +40,11 @@ export function MapboxMemoryMap({
     const markersRef = useRef<mapboxgl.Marker[]>([])
     const locatedMemoriesRef = useRef<LocatedMemory[]>([])
     const hoveredRef = useRef<LocatedMemory | null>(null)
+    const tooltipRef = useRef<HTMLDivElement>(null)
     const [mapLoaded, setMapLoaded] = useState(false)
     const [mapError, setMapError] = useState<string | null>(null)
     const [showFallback, setShowFallback] = useState(false)
     const [hovered, setHovered] = useState<LocatedMemory | null>(null)
-    const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null)
 
     const locatedMemories = useMemo(
         () => memories
@@ -75,18 +70,27 @@ export function MapboxMemoryMap({
         locatedMemoriesRef.current = locatedMemories
     }, [locatedMemories])
 
-    const updateHoverPosition = useCallback((memory: LocatedMemory | null) => {
-        if (!memory || !mapRef.current || !containerRef.current) {
-            setHoverPoint(null)
+    // Direct DOM positioning — bypasses React render cycle for zero-latency updates
+    const syncTooltipPosition = useCallback(() => {
+        const el = tooltipRef.current
+        const memory = hoveredRef.current
+        const map = mapRef.current
+        const container = containerRef.current
+        if (!el) return
+        if (!memory || !map || !container) {
+            el.style.opacity = '0'
+            el.style.pointerEvents = 'none'
             return
         }
 
-        const projected = mapRef.current.project([memory.longitude, memory.latitude])
-        const bounds = containerRef.current.getBoundingClientRect()
-        setHoverPoint({
-            x: clamp(projected.x, 116, Math.max(116, bounds.width - 116)),
-            y: clamp(projected.y - 18, 82, Math.max(82, bounds.height - 92)),
-        })
+        const projected = map.project([memory.longitude, memory.latitude])
+        const bounds = container.getBoundingClientRect()
+        const x = clamp(projected.x, 116, Math.max(116, bounds.width - 116))
+        const y = clamp(projected.y - 18, 82, Math.max(82, bounds.height - 92))
+
+        el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`
+        el.style.opacity = '1'
+        el.style.pointerEvents = 'none'
     }, [])
 
     useEffect(() => {
@@ -136,9 +140,8 @@ export function MapboxMemoryMap({
                     }
                 }, 3200)
 
-                const updateCurrentHover = () => updateHoverPosition(hoveredRef.current)
-                map.on('move', updateCurrentHover)
-                map.on('resize', updateCurrentHover)
+                map.on('move', syncTooltipPosition)
+                map.on('resize', syncTooltipPosition)
                 map.on('error', (event) => {
                     if (!styleReady) {
                         setMapError(event.error?.message || 'Map failed to load')
@@ -153,13 +156,13 @@ export function MapboxMemoryMap({
                     setMapLoaded(true)
                     requestAnimationFrame(() => {
                         map.resize()
-                        updateCurrentHover()
+                        syncTooltipPosition()
                     })
                 })
 
                 resizeObserver = new ResizeObserver(() => {
                     map.resize()
-                    updateCurrentHover()
+                    syncTooltipPosition()
                 })
                 resizeObserver.observe(containerRef.current)
             } catch (error) {
@@ -179,12 +182,12 @@ export function MapboxMemoryMap({
             mapRef.current = null
             mapboxRef.current = null
         }
-    }, [updateHoverPosition, variant])
+    }, [syncTooltipPosition, variant])
 
     useEffect(() => {
         hoveredRef.current = hovered
-        updateHoverPosition(hovered)
-    }, [hovered, updateHoverPosition])
+        syncTooltipPosition()
+    }, [hovered, syncTooltipPosition])
 
     useEffect(() => {
         const map = mapRef.current
@@ -293,10 +296,14 @@ export function MapboxMemoryMap({
                 <MapPlaceholder text="No EXIF GPS memories yet" />
             )}
 
-            {variant === 'spatial' && hovered && hoverPoint && (
+            {/* Hover tooltip — positioned via direct DOM manipulation for zero-lag map tracking */}
+            {variant === 'spatial' && (
                 <div
+                    ref={tooltipRef}
                     style={{
                         position: 'absolute',
+                        top: 0,
+                        left: 0,
                         zIndex: 5,
                         width: 220,
                         overflow: 'hidden',
@@ -305,9 +312,8 @@ export function MapboxMemoryMap({
                         background: '#101010',
                         boxShadow: '0 18px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.06)',
                         pointerEvents: 'none',
-                        transform: 'translate(-50%, -100%)',
-                        left: hoverPoint.x,
-                        top: hoverPoint.y,
+                        opacity: hovered ? 1 : 0,
+                        willChange: 'transform',
                     }}
                 >
                     <div
@@ -318,7 +324,7 @@ export function MapboxMemoryMap({
                             background: '#000',
                         }}
                     >
-                        {hovered.thumbnailUrl ? (
+                        {hovered?.thumbnailUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                                 src={hovered.thumbnailUrl}
@@ -359,7 +365,7 @@ export function MapboxMemoryMap({
                                     fontWeight: 500,
                                 }}
                             >
-                                {hovered.title}
+                                {hovered?.title}
                             </h2>
                         </div>
                     </div>
