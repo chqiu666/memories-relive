@@ -2,8 +2,10 @@
 
 import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { useStore } from '@/store'
 import { Gallery } from '@/components/dom/Gallery'
+import { MapboxMemoryMap } from '@/components/dom/MapboxMemoryMap'
 import { AnimatePresence, motion } from 'framer-motion'
 import { LayoutGrid, Map, Trees, type LucideIcon } from 'lucide-react'
 
@@ -24,6 +26,7 @@ const HOME_TABS: Array<{
 
 export default function Home() {
   const { viewMode, memories, fetchMemories, set } = useStore((s) => s)
+  const router = useRouter()
 
   useEffect(() => {
     if (memories.length === 0) fetchMemories()
@@ -97,7 +100,18 @@ export default function Home() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35 }}
               className="absolute inset-0 bg-[#0a0a0a]"
-            />
+            >
+              <MapboxMemoryMap
+                memories={memories}
+                variant="spatial"
+                activeMemoryId={null}
+                className="h-full w-full"
+                onSelectMemory={(id) => {
+                  set({ activeMemoryId: id, viewMode: 'detail' })
+                  router.push(`/${encodeURIComponent(id)}`)
+                }}
+              />
+            </motion.div>
           )}
 
           {activeHomeView === 'about' && (
