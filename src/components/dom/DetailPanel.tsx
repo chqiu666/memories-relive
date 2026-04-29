@@ -3,20 +3,21 @@
 import { useState } from 'react'
 import { useStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, FileText, Image, MapPin, Clock } from 'lucide-react'
+import { FileText, Image, MapPin, Clock, Info } from 'lucide-react'
 
 /**
- * Full-height detail description panel on the right side of the detail page.
- * Apple HIG-inspired glassmorphic design with expandable sections.
+ * macOS 26 / Apple "Special UI" floating detail panel.
+ * Rounded-corner island that floats detached from all edges.
+ * Collapsed state: small pill in the top-right corner.
+ * Expanded state: grows vertically to near-full page height.
  */
 export function DetailPanel() {
     const { viewMode, activeMemoryId, memories } = useStore((s) => s)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
-    const [collapsed, setCollapsed] = useState(true)
+    const [expanded, setExpanded] = useState(false)
 
     if (viewMode !== 'detail' || !activeMemory) return null
 
-    // Placeholder dates derived from memory data
     const createdAt = activeMemory.created_at
         ? new Date(activeMemory.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -37,112 +38,164 @@ export function DetailPanel() {
         : '—'
 
     return (
-        <>
-            {/* Toggle tab — always visible on right edge */}
-            <motion.button
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4, duration: 0.3 }}
-                onClick={() => setCollapsed(!collapsed)}
-                className="fixed right-0 top-1/2 -translate-y-1/2 z-40 pointer-events-auto
-                    w-6 h-16 flex items-center justify-center
-                    bg-white/5 hover:bg-white/10 backdrop-blur-md
-                    border border-r-0 border-white/10 hover:border-white/20
-                    rounded-l-lg transition-all duration-300
-                    text-white/40 hover:text-white/70"
-                title={collapsed ? 'Show details' : 'Hide details'}
-            >
-                {collapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-            </motion.button>
-
-            {/* Panel */}
-            <AnimatePresence>
-                {!collapsed && (
-                    <motion.aside
-                        initial={{ x: '100%', opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: '100%', opacity: 0 }}
-                        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                        className="fixed right-0 top-0 bottom-0 z-30 pointer-events-auto
-                            w-[340px] flex flex-col
-                            bg-black/60 backdrop-blur-2xl
-                            border-l border-white/8"
-                        style={{
-                            WebkitBackdropFilter: 'blur(40px)',
-                            backdropFilter: 'blur(40px)',
-                        }}
-                    >
-                        {/* Header */}
-                        <div className="flex-shrink-0 px-6 pt-8 pb-4 border-b border-white/6">
-                            <h3 className="text-[13px] font-semibold text-white/90 tracking-wide uppercase">
-                                Details
-                            </h3>
-                            <p className="text-[11px] text-white/35 mt-1 tracking-wide">
+        <AnimatePresence mode="wait">
+            {!expanded ? (
+                /* ── Collapsed pill ── */
+                <motion.button
+                    key="collapsed"
+                    layoutId="detail-panel"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+                    onClick={() => setExpanded(true)}
+                    className="fixed top-5 right-5 z-40 pointer-events-auto
+                        flex items-center gap-2.5 px-4 py-2.5
+                        rounded-2xl cursor-pointer
+                        text-white/50 hover:text-white/80
+                        transition-colors duration-200"
+                    style={{
+                        background: 'rgba(30, 30, 30, 0.55)',
+                        backdropFilter: 'blur(40px) saturate(1.8)',
+                        WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+                        border: '0.5px solid rgba(255,255,255,0.12)',
+                        boxShadow:
+                            '0 8px 32px rgba(0,0,0,0.35), inset 0 0.5px 0 rgba(255,255,255,0.08)',
+                    }}
+                    title="Show details"
+                >
+                    <Info size={14} strokeWidth={1.8} />
+                    <span className="text-[12px] font-medium tracking-wide">
+                        {activeMemory.title}
+                    </span>
+                </motion.button>
+            ) : (
+                /* ── Expanded floating panel ── */
+                <motion.aside
+                    key="expanded"
+                    layoutId="detail-panel"
+                    initial={{ opacity: 0, scaleY: 0.3, scaleX: 0.92, originX: 1, originY: 0 }}
+                    animate={{ opacity: 1, scaleY: 1, scaleX: 1 }}
+                    exit={{ opacity: 0, scaleY: 0.3, scaleX: 0.92 }}
+                    transition={{ type: 'spring', damping: 32, stiffness: 350 }}
+                    className="fixed z-40 pointer-events-auto
+                        flex flex-col overflow-hidden"
+                    style={{
+                        top: '20px',
+                        right: '20px',
+                        bottom: '20px',
+                        width: '320px',
+                        borderRadius: '20px',
+                        background: 'rgba(22, 22, 22, 0.62)',
+                        backdropFilter: 'blur(60px) saturate(1.8)',
+                        WebkitBackdropFilter: 'blur(60px) saturate(1.8)',
+                        border: '0.5px solid rgba(255,255,255,0.10)',
+                        boxShadow:
+                            '0 24px 80px rgba(0,0,0,0.45), 0 2px 12px rgba(0,0,0,0.3), inset 0 0.5px 0 rgba(255,255,255,0.06)',
+                        transformOrigin: 'top right',
+                    }}
+                >
+                    {/* ── Header ── */}
+                    <div className="flex-shrink-0 px-5 pt-5 pb-4 flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-[14px] font-semibold text-white/90 tracking-wide truncate">
                                 {activeMemory.title}
+                            </h3>
+                            <p className="text-[10px] text-white/30 mt-0.5 tracking-wider uppercase">
+                                {activeMemory.description?.slice(0, 50) || 'Memory'}
                             </p>
                         </div>
-
-                        {/* Scrollable content */}
-                        <div
-                            className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
+                        <button
+                            onClick={() => setExpanded(false)}
+                            className="flex-shrink-0 w-7 h-7 rounded-full
+                                flex items-center justify-center
+                                bg-white/5 hover:bg-white/10
+                                text-white/35 hover:text-white/70
+                                transition-all duration-200 cursor-pointer ml-3"
                             style={{
-                                scrollbarWidth: 'thin',
-                                scrollbarColor: 'rgba(255,255,255,0.08) transparent',
+                                border: '0.5px solid rgba(255,255,255,0.08)',
                             }}
+                            title="Close"
                         >
-                            {/* ── Overview ── */}
-                            <Section icon={<FileText size={14} />} title="Overview">
-                                <p className="text-[12px] leading-[1.8] text-white/45">
-                                    {activeMemory.description || 'No description available.'}
-                                </p>
-                            </Section>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                            </svg>
+                        </button>
+                    </div>
 
-                            {/* ── Original Image ── */}
-                            <Section icon={<Image size={14} />} title="Original Image">
-                                {activeMemory.thumbnail_url ? (
-                                    <div className="rounded-lg overflow-hidden border border-white/8">
-                                        <img
-                                            src={activeMemory.thumbnail_url}
-                                            alt={activeMemory.title}
-                                            className="w-full h-auto object-cover"
-                                            style={{ maxHeight: '200px' }}
-                                        />
-                                    </div>
-                                ) : (
-                                    <Placeholder text="No original image" />
-                                )}
-                            </Section>
+                    {/* ── Thin separator ── */}
+                    <div className="mx-5 h-px bg-white/6" />
 
-                            {/* ── Additional Images ── */}
-                            <Section icon={<Image size={14} />} title="Additional Images">
-                                <Placeholder text="No additional images" />
-                            </Section>
+                    {/* ── Scrollable content ── */}
+                    <div
+                        className="flex-1 overflow-y-auto px-5 py-4 space-y-5"
+                        style={{
+                            scrollbarWidth: 'none',
+                        }}
+                    >
+                        {/* Overview */}
+                        <Section icon={<FileText size={13} />} title="Overview">
+                            <p className="text-[12px] leading-[1.85] text-white/40">
+                                {activeMemory.description || 'No description available.'}
+                            </p>
+                        </Section>
 
-                            {/* ── Location ── */}
-                            <Section icon={<MapPin size={14} />} title="Location">
-                                <div className="rounded-lg overflow-hidden border border-white/8 bg-white/3 h-[160px] flex items-center justify-center">
-                                    <div className="text-center">
-                                        <MapPin size={20} className="text-white/15 mx-auto mb-2" />
-                                        <p className="text-[11px] text-white/25">
-                                            EXIF geolocation not available
-                                        </p>
-                                    </div>
+                        {/* Original Image */}
+                        <Section icon={<Image size={13} />} title="Original Image">
+                            {activeMemory.thumbnail_url ? (
+                                <div
+                                    className="rounded-xl overflow-hidden"
+                                    style={{
+                                        border: '0.5px solid rgba(255,255,255,0.06)',
+                                    }}
+                                >
+                                    <img
+                                        src={activeMemory.thumbnail_url}
+                                        alt={activeMemory.title}
+                                        className="w-full h-auto object-cover"
+                                        style={{ maxHeight: '180px' }}
+                                    />
                                 </div>
-                            </Section>
+                            ) : (
+                                <Placeholder text="No original image" />
+                            )}
+                        </Section>
 
-                            {/* ── Timestamps ── */}
-                            <Section icon={<Clock size={14} />} title="Timestamps">
-                                <div className="space-y-3">
-                                    <MetaRow label="Photo taken" value="—" />
-                                    <MetaRow label="Created" value={createdAt} />
-                                    <MetaRow label="Modified" value={updatedAt} />
+                        {/* Additional Images */}
+                        <Section icon={<Image size={13} />} title="Additional Images">
+                            <Placeholder text="No additional images" />
+                        </Section>
+
+                        {/* Location */}
+                        <Section icon={<MapPin size={13} />} title="Location">
+                            <div
+                                className="rounded-xl overflow-hidden h-[140px] flex items-center justify-center"
+                                style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '0.5px solid rgba(255,255,255,0.06)',
+                                }}
+                            >
+                                <div className="text-center">
+                                    <MapPin size={18} className="text-white/12 mx-auto mb-2" />
+                                    <p className="text-[10px] text-white/20">
+                                        EXIF geolocation not available
+                                    </p>
                                 </div>
-                            </Section>
-                        </div>
-                    </motion.aside>
-                )}
-            </AnimatePresence>
-        </>
+                            </div>
+                        </Section>
+
+                        {/* Timestamps */}
+                        <Section icon={<Clock size={13} />} title="Timestamps">
+                            <div className="space-y-2.5">
+                                <MetaRow label="Photo taken" value="—" />
+                                <MetaRow label="Created" value={createdAt} />
+                                <MetaRow label="Modified" value={updatedAt} />
+                            </div>
+                        </Section>
+                    </div>
+                </motion.aside>
+            )}
+        </AnimatePresence>
     )
 }
 
@@ -159,13 +212,13 @@ function Section({
 }) {
     return (
         <div>
-            <div className="flex items-center gap-2 mb-3">
-                <span className="text-white/30">{icon}</span>
-                <span className="text-[11px] font-medium text-white/50 uppercase tracking-widest">
+            <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-white/25">{icon}</span>
+                <span className="text-[10px] font-medium text-white/40 uppercase tracking-[0.08em]">
                     {title}
                 </span>
             </div>
-            <div className="pl-0.5">{children}</div>
+            <div>{children}</div>
         </div>
     )
 }
@@ -173,16 +226,22 @@ function Section({
 function MetaRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex items-start justify-between gap-3">
-            <span className="text-[11px] text-white/35 flex-shrink-0">{label}</span>
-            <span className="text-[11px] text-white/60 text-right font-mono">{value}</span>
+            <span className="text-[11px] text-white/30 flex-shrink-0">{label}</span>
+            <span className="text-[11px] text-white/55 text-right font-mono">{value}</span>
         </div>
     )
 }
 
 function Placeholder({ text }: { text: string }) {
     return (
-        <div className="rounded-lg border border-dashed border-white/8 bg-white/2 px-4 py-5 flex items-center justify-center">
-            <p className="text-[11px] text-white/20">{text}</p>
+        <div
+            className="rounded-xl px-4 py-5 flex items-center justify-center"
+            style={{
+                border: '0.5px dashed rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.015)',
+            }}
+        >
+            <p className="text-[10px] text-white/18">{text}</p>
         </div>
     )
 }
