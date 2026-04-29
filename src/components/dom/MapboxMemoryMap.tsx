@@ -4,36 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type mapboxgl from 'mapbox-gl'
 import type { MemoryWithTraces } from '@/db'
 
-const DARK_RASTER_STYLE: mapboxgl.StyleSpecification = {
-    version: 8,
-    sources: {
-        'carto-dark': {
-            type: 'raster',
-            tiles: [
-                'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            ],
-            tileSize: 256,
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        },
-    },
-    layers: [
-        {
-            id: 'carto-dark',
-            type: 'raster',
-            source: 'carto-dark',
-            minzoom: 0,
-            maxzoom: 19,
-            paint: {
-                'raster-opacity': 0.95,
-                'raster-contrast': 0.12,
-                'raster-saturation': -1,
-            },
-        },
-    ],
-}
+const MAPBOX_TOKEN =
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
+    'pk.eyJ1IjoiYW5kcmV3OWl1IiwiYSI6ImNtZGk0ejdrZTA5OWQyaXBtdWhlMTdpd2EifQ.SG4pkm1FkJI79DoutAJmrw'
+const MAPBOX_STYLE = 'mapbox://styles/mapbox/dark-v11'
 
 type MapVariant = 'detail' | 'spatial'
 
@@ -132,12 +106,13 @@ export function MapboxMemoryMap({
                 if (disposed || !containerRef.current) return
 
                 const mapbox = mapboxModule.default
+                mapbox.accessToken = MAPBOX_TOKEN
                 mapboxRef.current = mapbox
 
                 const initialPoint = locatedMemoriesRef.current[0]
                 const map = new mapbox.Map({
                     container: containerRef.current,
-                    style: DARK_RASTER_STYLE,
+                    style: MAPBOX_STYLE,
                     center: initialPoint
                         ? [initialPoint.longitude, initialPoint.latitude]
                         : [-73.987, 40.748],
