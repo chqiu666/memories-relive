@@ -94,15 +94,18 @@ function SceneContent() {
 
     const hlUrl = getHlUrl(modelUrl)
     const hasBackendWebSample = Boolean(activeMemory.model_web_url)
+    const shouldLoadHighlight = Boolean(activeMemory.traces?.length)
 
     return (
         <>
             <OrbitControls ref={controlsRef} makeDefault enableDamping dampingFactor={0.05} />
             <PointCloud url={modelUrl} opacity={1} disableClientSampling={hasBackendWebSample} />
             <OrbitTargetSync url={modelUrl} controlsRef={controlsRef} />
-            <R3FErrorBoundary>
-                <HighlightPointCloud url={hlUrl} />
-            </R3FErrorBoundary>
+            {shouldLoadHighlight && (
+                <R3FErrorBoundary>
+                    <HighlightPointCloud url={hlUrl} />
+                </R3FErrorBoundary>
+            )}
             {activeMemory.traces?.map((t, i) => (
                 <InfoTile
                     key={`${activeMemory.id}-tile-${i}`}
