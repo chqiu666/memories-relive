@@ -3,12 +3,14 @@ import { randomUUID } from 'node:crypto'
 import { put } from '@vercel/blob'
 import { ensureMemoryAssetColumns, getDb } from '@/db'
 import { extractExifLocation, type PhotoLocation } from '@/lib/exif'
+import { fallbackMemoryMetadata, generateMemoryMetadataFromImage } from '@/lib/memoryMetadata'
 import { addPlySampleSuffix, downsamplePlyBytes } from '@/lib/ply'
 
 /**
  * POST /api/generate
  *
- * Full pipeline: image → Modal ml-sharp → full PLY → sampled PLYs → Vercel Blob → Neon DB
+ * Full pipeline: image → OpenAI metadata + Modal ml-sharp in parallel → full PLY
+ * → sampled PLYs → Vercel Blob → Neon DB
  *
  * Request: multipart/form-data with 'image' field
  * Returns: { id, title, model_url, model_full_url, model_web_url, model_garden_url, thumbnail_url }
@@ -51,6 +53,16 @@ export async function POST(request: Request) {
         console.log(`[generate] Processing ${imageFile.name} (${(imageFile.size / 1024).toFixed(0)} KB)`)
 
         const imageBytes = await imageFile.arrayBuffer()
+        const fallbackMetadata = fallbackMemoryMetadata(imageFile.name)
+        const metadataPromise = generateMemoryMetadataFromImage(
+            imageBytes,
+            imageFile.type,
+            imageFile.name
+        ).catch((error) => {
+            console.error('[generate] OpenAI metadata generation failed:', error)
+            return fallbackMetadata
+        })
+
         let photoLocation = extractExifLocation(imageBytes)
         if (photoLocation) {
             console.log(
@@ -117,13 +129,15 @@ export async function POST(request: Request) {
         // 3) Upload original image as thumbnail to Vercel Blob
         const thumbBlob = await put(
             `thumbnails/${imageFile.name}`,
-            imageFile,
+            new Blob([imageBytes], { type: imageFile.type }),
             { access: 'public', addRandomSuffix: true }
         )
 
         // 4) Create memory record in Neon DB
         const memoryId = `mem_${randomUUID().replaceAll('-', '').slice(0, 20)}`
-        const title = imageFile.name.replace(/\.[^.]+$/, '') // filename without extension
+        const metadata = await metadataPromise
+        const title = metadata.title || fallbackMetadata.title
+        const description = metadata.description || fallbackMetadata.description
 
         const sql = getDb()
         await ensureMemoryAssetColumns(sql)
@@ -144,7 +158,7 @@ export async function POST(request: Request) {
             VALUES (
                 ${memoryId},
                 ${title},
-                ${'Generated from photo'},
+                ${description},
                 ${thumbBlob.url},
                 ${webPlyBlob.url},
                 ${fullPlyBlob.url},
@@ -161,6 +175,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             id: memoryId,
             title,
+            description,
             model_url: webPlyBlob.url,
             model_full_url: fullPlyBlob.url,
             model_web_url: webPlyBlob.url,

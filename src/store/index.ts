@@ -161,7 +161,7 @@ export const useStore = create<AppState>((set, get) => ({
             const newMemory = {
                 id: result.id,
                 title: result.title,
-                description: 'Generated from photo',
+                description: result.description || 'Generated from photo',
                 thumbnail_url: result.thumbnail_url,
                 model_url: result.model_url,
                 model_full_url: result.model_full_url,
