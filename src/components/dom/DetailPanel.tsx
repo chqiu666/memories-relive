@@ -106,9 +106,6 @@ export function DetailPanel() {
                             <h3 className="text-[14px] font-semibold text-white/90 tracking-wide truncate">
                                 {activeMemory.title}
                             </h3>
-                            <p className="text-[10px] text-white/30 mt-0.5 tracking-wider uppercase">
-                                {activeMemory.description?.slice(0, 50) || 'Memory'}
-                            </p>
                         </div>
                         <button
                             onClick={() => setExpanded(false)}

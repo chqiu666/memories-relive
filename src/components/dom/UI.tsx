@@ -110,9 +110,6 @@ export function UI() {
                                     </>
                                 )}
                             </div>
-                            <p className="text-xs text-white/30 mt-2 tracking-wide">
-                                {activeMemory.description}
-                            </p>
                         </motion.div>
                     )}
                 </AnimatePresence>
