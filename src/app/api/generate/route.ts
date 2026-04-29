@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { put } from '@vercel/blob'
 import { ensureMemoryAssetColumns, getDb } from '@/db'
+import { extractExifLocation, type PhotoLocation } from '@/lib/exif'
 import { addPlySampleSuffix, downsamplePlyBytes } from '@/lib/ply'
 
 /**
@@ -49,9 +50,17 @@ export async function POST(request: Request) {
 
         console.log(`[generate] Processing ${imageFile.name} (${(imageFile.size / 1024).toFixed(0)} KB)`)
 
+        const imageBytes = await imageFile.arrayBuffer()
+        let photoLocation = extractExifLocation(imageBytes)
+        if (photoLocation) {
+            console.log(
+                `[generate] Found EXIF GPS: ${photoLocation.latitude.toFixed(6)}, ${photoLocation.longitude.toFixed(6)}`
+            )
+        }
+
         // 1) Send image to Modal web endpoint
         const modalForm = new FormData()
-        modalForm.append('image', imageFile)
+        modalForm.append('image', new Blob([imageBytes], { type: imageFile.type }), imageFile.name)
 
         const modalRes = await fetch(MODAL_ENDPOINT_URL, {
             method: 'POST',
@@ -69,6 +78,8 @@ export async function POST(request: Request) {
 
         const plyBytes = await modalRes.arrayBuffer()
         console.log(`[generate] Received PLY: ${(plyBytes.byteLength / 1024).toFixed(0)} KB`)
+
+        photoLocation ??= getLocationFromModalHeaders(modalRes.headers)
 
         const outputFilename =
             modalRes.headers.get('X-Output-Filename') ||
@@ -125,7 +136,10 @@ export async function POST(request: Request) {
                 model_url,
                 model_full_url,
                 model_web_url,
-                model_garden_url
+                model_garden_url,
+                photo_latitude,
+                photo_longitude,
+                photo_location_source
             )
             VALUES (
                 ${memoryId},
@@ -135,7 +149,10 @@ export async function POST(request: Request) {
                 ${webPlyBlob.url},
                 ${fullPlyBlob.url},
                 ${webPlyBlob.url},
-                ${gardenPlyBlob.url}
+                ${gardenPlyBlob.url},
+                ${photoLocation?.latitude ?? null},
+                ${photoLocation?.longitude ?? null},
+                ${photoLocation?.source ?? null}
             )
         `
 
@@ -149,6 +166,9 @@ export async function POST(request: Request) {
             model_web_url: webPlyBlob.url,
             model_garden_url: gardenPlyBlob.url,
             thumbnail_url: thumbBlob.url,
+            photo_latitude: photoLocation?.latitude ?? null,
+            photo_longitude: photoLocation?.longitude ?? null,
+            photo_location_source: photoLocation?.source ?? null,
         }, { status: 201 })
 
     } catch (error) {
@@ -159,4 +179,20 @@ export async function POST(request: Request) {
             { status: 500 }
         )
     }
+}
+
+function getLocationFromModalHeaders(headers: Headers): PhotoLocation | null {
+    const latitude = Number(headers.get('X-Photo-Latitude'))
+    const longitude = Number(headers.get('X-Photo-Longitude'))
+
+    if (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 &&
+        Math.abs(longitude) <= 180
+    ) {
+        return { latitude, longitude, source: 'exif' }
+    }
+
+    return null
 }

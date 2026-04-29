@@ -24,6 +24,9 @@ export async function GET(
                 model_full_url,
                 model_web_url,
                 model_garden_url,
+                photo_latitude,
+                photo_longitude,
+                photo_location_source,
                 created_at,
                 updated_at
             FROM memories WHERE id = ${id}
@@ -89,6 +92,15 @@ export async function PATCH(
         if (body.model_garden_url !== undefined) {
             values.model_garden_url = body.model_garden_url
         }
+        if (body.photo_latitude !== undefined) {
+            values.photo_latitude = body.photo_latitude
+        }
+        if (body.photo_longitude !== undefined) {
+            values.photo_longitude = body.photo_longitude
+        }
+        if (body.photo_location_source !== undefined) {
+            values.photo_location_source = body.photo_location_source
+        }
 
         if (Object.keys(values).length === 0) {
             return NextResponse.json({ error: '没有需要更新的字段' }, { status: 400 })
@@ -116,6 +128,15 @@ export async function PATCH(
         }
         if (values.model_garden_url !== undefined) {
             await sql`UPDATE memories SET model_garden_url = ${values.model_garden_url as string}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.photo_latitude !== undefined) {
+            await sql`UPDATE memories SET photo_latitude = ${values.photo_latitude as number | null}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.photo_longitude !== undefined) {
+            await sql`UPDATE memories SET photo_longitude = ${values.photo_longitude as number | null}, updated_at = now() WHERE id = ${id}`
+        }
+        if (values.photo_location_source !== undefined) {
+            await sql`UPDATE memories SET photo_location_source = ${values.photo_location_source as string | null}, updated_at = now() WHERE id = ${id}`
         }
 
         return NextResponse.json({ success: true })

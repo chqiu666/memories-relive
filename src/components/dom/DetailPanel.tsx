@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Image, MapPin, Clock, Info } from 'lucide-react'
+import { FileText, Image as ImageIcon, MapPin, Clock, Info } from 'lucide-react'
 
 /**
  * macOS 26 / Apple "Special UI" floating detail panel.
@@ -14,7 +14,7 @@ import { FileText, Image, MapPin, Clock, Info } from 'lucide-react'
 export function DetailPanel() {
     const { viewMode, activeMemoryId, memories } = useStore((s) => s)
     const activeMemory = memories.find((m) => m.id === activeMemoryId)
-    const [expanded, setExpanded] = useState(false)
+    const [expanded, setExpanded] = useState(true)
 
     if (viewMode !== 'detail' || !activeMemory) return null
 
@@ -36,6 +36,8 @@ export function DetailPanel() {
             minute: '2-digit',
         })
         : '—'
+    const photoLatitude = toFiniteNumber(activeMemory.photo_latitude)
+    const photoLongitude = toFiniteNumber(activeMemory.photo_longitude)
 
     return (
         <AnimatePresence mode="wait">
@@ -141,7 +143,7 @@ export function DetailPanel() {
                         </Section>
 
                         {/* Original Image */}
-                        <Section icon={<Image size={13} />} title="Original Image">
+                        <Section icon={<ImageIcon size={13} />} title="Original Image">
                             {activeMemory.thumbnail_url ? (
                                 <div
                                     className="rounded-xl overflow-hidden"
@@ -149,6 +151,7 @@ export function DetailPanel() {
                                         border: '0.5px solid rgba(255,255,255,0.06)',
                                     }}
                                 >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={activeMemory.thumbnail_url}
                                         alt={activeMemory.title}
@@ -162,26 +165,30 @@ export function DetailPanel() {
                         </Section>
 
                         {/* Additional Images */}
-                        <Section icon={<Image size={13} />} title="Additional Images">
+                        <Section icon={<ImageIcon size={13} />} title="Additional Images">
                             <Placeholder text="No additional images" />
                         </Section>
 
                         {/* Location */}
                         <Section icon={<MapPin size={13} />} title="Location">
-                            <div
-                                className="rounded-xl overflow-hidden h-[140px] flex items-center justify-center"
-                                style={{
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '0.5px solid rgba(255,255,255,0.06)',
-                                }}
-                            >
-                                <div className="text-center">
-                                    <MapPin size={18} className="text-white/12 mx-auto mb-2" />
-                                    <p className="text-[10px] text-white/20">
-                                        EXIF geolocation not available
-                                    </p>
+                            {photoLatitude !== null && photoLongitude !== null ? (
+                                <MiniLocationMap latitude={photoLatitude} longitude={photoLongitude} />
+                            ) : (
+                                <div
+                                    className="rounded-xl overflow-hidden h-[140px] flex items-center justify-center"
+                                    style={{
+                                        background: 'rgba(255,255,255,0.02)',
+                                        border: '0.5px solid rgba(255,255,255,0.06)',
+                                    }}
+                                >
+                                    <div className="text-center">
+                                        <MapPin size={18} className="text-white/12 mx-auto mb-2" />
+                                        <p className="text-[10px] text-white/20">
+                                            EXIF geolocation not available
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </Section>
 
                         {/* Timestamps */}
@@ -232,6 +239,80 @@ function MetaRow({ label, value }: { label: string; value: string }) {
     )
 }
 
+function MiniLocationMap({
+    latitude,
+    longitude,
+}: {
+    latitude: number
+    longitude: number
+}) {
+    const x = ((longitude + 180) / 360) * 320
+    const y = ((90 - latitude) / 180) * 150
+
+    return (
+        <div
+            className="rounded-xl overflow-hidden"
+            style={{
+                background: '#f4f4f0',
+                border: '0.5px solid rgba(255,255,255,0.10)',
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+            }}
+        >
+            <svg
+                viewBox="0 0 320 150"
+                role="img"
+                aria-label={`Photo location map at ${formatCoordinate(latitude, 'lat')}, ${formatCoordinate(longitude, 'lon')}`}
+                className="block h-[140px] w-full"
+                preserveAspectRatio="none"
+            >
+                <rect width="320" height="150" fill="#f4f4f0" />
+                <path d="M0 75H320M160 0V150" stroke="#d4d4ce" strokeWidth="0.8" />
+                <path d="M80 0V150M240 0V150M0 37.5H320M0 112.5H320" stroke="#e0e0dc" strokeWidth="0.7" />
+                <path
+                    d="M52 47C66 31 91 26 112 35C128 42 126 57 111 64C97 70 101 84 87 91C70 100 50 89 43 75C35 61 41 54 52 47Z"
+                    fill="#171717"
+                    opacity="0.9"
+                />
+                <path
+                    d="M92 97C110 91 130 101 134 116C139 135 115 145 101 132C89 121 78 105 92 97Z"
+                    fill="#171717"
+                    opacity="0.9"
+                />
+                <path
+                    d="M142 43C158 30 178 31 191 43C204 55 191 69 174 67C156 65 139 58 142 43Z"
+                    fill="#171717"
+                    opacity="0.88"
+                />
+                <path
+                    d="M178 70C197 62 220 66 232 82C244 99 235 122 215 129C195 136 181 118 186 99C190 84 164 80 178 70Z"
+                    fill="#171717"
+                    opacity="0.9"
+                />
+                <path
+                    d="M217 43C240 26 275 31 292 50C306 66 286 83 262 77C241 72 223 64 217 43Z"
+                    fill="#171717"
+                    opacity="0.9"
+                />
+                <path
+                    d="M265 105C278 97 298 103 303 117C309 134 287 141 273 130C263 122 255 112 265 105Z"
+                    fill="#171717"
+                    opacity="0.85"
+                />
+                <circle cx={x} cy={y} r="6.5" fill="#f4f4f0" stroke="#171717" strokeWidth="2" />
+                <circle cx={x} cy={y} r="3" fill="#171717" />
+            </svg>
+            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-[#171717]">
+                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-white/65">
+                    EXIF GPS
+                </span>
+                <span className="text-[10px] font-mono text-white/80">
+                    {formatCoordinate(latitude, 'lat')} {formatCoordinate(longitude, 'lon')}
+                </span>
+            </div>
+        </div>
+    )
+}
+
 function Placeholder({ text }: { text: string }) {
     return (
         <div
@@ -244,4 +325,19 @@ function Placeholder({ text }: { text: string }) {
             <p className="text-[10px] text-white/18">{text}</p>
         </div>
     )
+}
+
+function toFiniteNumber(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined) return null
+
+    const numberValue = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(numberValue) ? numberValue : null
+}
+
+function formatCoordinate(value: number, axis: 'lat' | 'lon'): string {
+    const direction = axis === 'lat'
+        ? value >= 0 ? 'N' : 'S'
+        : value >= 0 ? 'E' : 'W'
+
+    return `${Math.abs(value).toFixed(4)}°${direction}`
 }

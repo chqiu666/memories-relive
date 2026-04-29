@@ -21,6 +21,9 @@ export async function GET() {
                 model_full_url,
                 model_web_url,
                 model_garden_url,
+                photo_latitude,
+                photo_longitude,
+                photo_location_source,
                 created_at,
                 updated_at
             FROM memories
@@ -61,6 +64,9 @@ export async function GET() {
             model_full_url: row.model_full_url as string | null,
             model_web_url: row.model_web_url as string | null,
             model_garden_url: row.model_garden_url as string | null,
+            photo_latitude: row.photo_latitude as number | null,
+            photo_longitude: row.photo_longitude as number | null,
+            photo_location_source: row.photo_location_source as string | null,
             created_at: row.created_at as string,
             updated_at: row.updated_at as string,
             traces: traceMap.get(row.id as string) || [],
@@ -92,6 +98,9 @@ export async function POST(request: Request) {
             model_full_url,
             model_web_url,
             model_garden_url,
+            photo_latitude,
+            photo_longitude,
+            photo_location_source,
         } = body
 
         if (!id || !title) {
@@ -112,7 +121,10 @@ export async function POST(request: Request) {
                 model_url,
                 model_full_url,
                 model_web_url,
-                model_garden_url
+                model_garden_url,
+                photo_latitude,
+                photo_longitude,
+                photo_location_source
             )
             VALUES (
                 ${id},
@@ -122,7 +134,10 @@ export async function POST(request: Request) {
                 ${model_url || model_web_url || null},
                 ${model_full_url || null},
                 ${model_web_url || model_url || null},
-                ${model_garden_url || null}
+                ${model_garden_url || null},
+                ${photo_latitude ?? null},
+                ${photo_longitude ?? null},
+                ${photo_location_source || null}
             )
         `
 

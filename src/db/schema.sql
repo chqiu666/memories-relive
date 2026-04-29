@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS memories (
     model_full_url TEXT,         -- 完整 PLY，作为保存和备份
     model_web_url TEXT,          -- 30% 采样 PLY，详情页加载
     model_garden_url TEXT,       -- 10% 采样 PLY，Garden 加载
+    photo_latitude DOUBLE PRECISION,      -- EXIF GPS latitude
+    photo_longitude DOUBLE PRECISION,     -- EXIF GPS longitude
+    photo_location_source TEXT,           -- e.g. 'exif'
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -15,6 +18,9 @@ CREATE TABLE IF NOT EXISTS memories (
 ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_full_url TEXT;
 ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_web_url TEXT;
 ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_garden_url TEXT;
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_latitude DOUBLE PRECISION;
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_longitude DOUBLE PRECISION;
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_location_source TEXT;
 
 -- traces 痕迹子表（每个 memory 有多个 trace/tile）
 CREATE TABLE IF NOT EXISTS traces (

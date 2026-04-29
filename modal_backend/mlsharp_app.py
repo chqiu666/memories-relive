@@ -62,6 +62,76 @@ mlsharp_image = (
 # ---------------------------------------------------------------------------
 # Helper: load image from bytes
 # ---------------------------------------------------------------------------
+def _rational_to_float(value) -> float:
+    """Convert PIL EXIF rational values to floats."""
+    if isinstance(value, tuple) and len(value) == 2:
+        numerator, denominator = value
+        return float(numerator) / float(denominator) if denominator else 0.0
+
+    return float(value)
+
+
+def _gps_parts_to_decimal(parts, ref: str) -> float | None:
+    if not parts or len(parts) != 3 or not ref:
+        return None
+
+    degrees = _rational_to_float(parts[0])
+    minutes = _rational_to_float(parts[1])
+    seconds = _rational_to_float(parts[2])
+    sign = -1 if ref.upper() in ("S", "W") else 1
+
+    return sign * (degrees + minutes / 60.0 + seconds / 3600.0)
+
+
+def _extract_gps_from_bytes(image_bytes: bytes, filename: str) -> tuple[float, float] | None:
+    """Extract EXIF GPS latitude/longitude before inference mutates the image."""
+    import pillow_heif
+    from pathlib import Path
+    from PIL import ExifTags, Image
+
+    file_ext = Path(filename).suffix.lower()
+    buffer = io.BytesIO(image_bytes)
+
+    try:
+        if file_ext in [".heic", ".heif"]:
+            heif_file = pillow_heif.open_heif(buffer, convert_hdr_to_8bit=True)
+            img_pil = heif_file.to_pillow()
+        else:
+            img_pil = Image.open(buffer)
+
+        exif = img_pil.getexif()
+        if not exif:
+            return None
+
+        gps_ifd = exif.get_ifd(0x8825) if hasattr(exif, "get_ifd") else None
+        if not gps_ifd:
+            return None
+
+        gps = {
+            ExifTags.GPSTAGS.get(tag, tag): value
+            for tag, value in gps_ifd.items()
+        }
+
+        latitude = _gps_parts_to_decimal(
+            gps.get("GPSLatitude"),
+            gps.get("GPSLatitudeRef"),
+        )
+        longitude = _gps_parts_to_decimal(
+            gps.get("GPSLongitude"),
+            gps.get("GPSLongitudeRef"),
+        )
+
+        if latitude is None or longitude is None:
+            return None
+        if abs(latitude) > 90 or abs(longitude) > 180:
+            return None
+
+        return latitude, longitude
+    except Exception as exc:
+        logger.warning("Could not extract EXIF GPS for %s: %s", filename, exc)
+        return None
+
+
 def _load_image_from_bytes(image_bytes: bytes, filename: str):
     """Load an image from bytes and extract focal length from EXIF."""
     import numpy as np
@@ -331,16 +401,22 @@ async def predict_web(image: UploadFile = File(...)):
     """
     image_bytes = await image.read()
     filename = image.filename or "upload.jpg"
+    gps_location = _extract_gps_from_bytes(image_bytes, filename)
 
     output_filename, ply_bytes = predict_gaussian_splat.local(image_bytes, filename)
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{output_filename}"',
+        "X-Output-Filename": output_filename,
+    }
+    if gps_location:
+        headers["X-Photo-Latitude"] = f"{gps_location[0]:.8f}"
+        headers["X-Photo-Longitude"] = f"{gps_location[1]:.8f}"
 
     return Response(
         content=ply_bytes,
         media_type="application/octet-stream",
-        headers={
-            "Content-Disposition": f'attachment; filename="{output_filename}"',
-            "X-Output-Filename": output_filename,
-        },
+        headers=headers,
     )
 
 
@@ -398,4 +474,3 @@ def main():
     print(f"\n{'=' * 60}")
     print(f"✅ All {len(image_files)} images processed in {total_elapsed:.1f}s")
     print(f"   Output directory: {out_dir}")
-

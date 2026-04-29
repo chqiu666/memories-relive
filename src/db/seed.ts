@@ -28,6 +28,9 @@ async function seed() {
             model_full_url TEXT,
             model_web_url TEXT,
             model_garden_url TEXT,
+            photo_latitude DOUBLE PRECISION,
+            photo_longitude DOUBLE PRECISION,
+            photo_location_source TEXT,
             created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
         )
@@ -36,6 +39,9 @@ async function seed() {
     await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_full_url TEXT`
     await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_web_url TEXT`
     await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS model_garden_url TEXT`
+    await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_latitude DOUBLE PRECISION`
+    await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_longitude DOUBLE PRECISION`
+    await sql`ALTER TABLE memories ADD COLUMN IF NOT EXISTS photo_location_source TEXT`
 
     // 建表：traces
     await sql`
