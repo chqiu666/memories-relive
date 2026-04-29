@@ -13,6 +13,7 @@ import { useStore } from '@/store'
 import { PointCloud } from './PointCloud'
 import { HighlightPointCloud } from './HighlightPointCloud'
 import { CoordPicker } from './CoordPicker'
+import { InfoTile } from './InfoTile'
 import { FpsMonitor } from './FpsMonitor'
 
 /** Swallows render errors from children (e.g. missing PLY files) */
@@ -102,7 +103,16 @@ function SceneContent() {
             <R3FErrorBoundary>
                 <HighlightPointCloud url={hlUrl} />
             </R3FErrorBoundary>
-            {/* InfoTiles temporarily disabled — coords need re-picking */}
+            {activeMemory.traces?.map((t, i) => (
+                <InfoTile
+                    key={`${activeMemory.id}-tile-${i}`}
+                    id={`${activeMemory.id}-tile-${i}`}
+                    position={t.position}
+                    label={t.label}
+                    description={t.description}
+                    forceDir={t.expand_dir as 'up' | 'down' | undefined}
+                />
+            ))}
             {postFxEnabled && (
                 <EffectComposer>
                     {/* Bloom only catches near-fully-saturated pixels (the */}

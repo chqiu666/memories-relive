@@ -52,7 +52,8 @@ export function DebugPanel() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed bottom-20 right-6 z-50 w-72 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl"
+                        className="fixed bottom-20 right-6 z-50 w-72 max-h-[calc(100vh-120px)] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10"
+                        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}
                     >
                         {/* Header */}
                         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useStore } from '@/store'
 import { UI } from '@/components/dom/UI'
 import { DebugPanel } from '@/components/dom/DebugPanel'
+import { DetailPanel } from '@/components/dom/DetailPanel'
 import { AnimatePresence, motion } from 'framer-motion'
 
 const Scene = dynamic(() => import('@/components/canvas/Scene'), { ssr: false })
@@ -50,6 +51,7 @@ export function MemoryDetailPage({ memoryId }: { memoryId: string }) {
 
             <UI />
             <DebugPanel />
+            <DetailPanel />
         </main>
     )
 }

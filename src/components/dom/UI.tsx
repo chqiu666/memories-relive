@@ -47,9 +47,9 @@ export function UI() {
     return (
         <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-8 z-10">
             {/* 顶部 – 返回按钮 */}
-            <div className="flex justify-end items-start">
+            <div className="flex justify-start items-start">
                 <motion.button
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     onClick={() => {
                         set({ viewMode: 'grid', activeMemoryId: null })
