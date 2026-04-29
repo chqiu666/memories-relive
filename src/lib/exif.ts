@@ -38,6 +38,15 @@ export function extractExifLocation(buffer: ArrayBuffer): PhotoLocation | null {
     return readGpsLocation(view, tiffStart)
 }
 
+export function isValidPhotoLocation(latitude: number, longitude: number): boolean {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false
+    if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return false
+
+    // Some phone/export pipelines preserve a GPS IFD but zero out the values.
+    // Treat Null Island as missing metadata for this app instead of a real memory location.
+    return latitude !== 0 || longitude !== 0
+}
+
 function findTiffStart(view: DataView): number | null {
     if (view.byteLength < 8) return null
 
@@ -100,8 +109,7 @@ function readGpsLocation(view: DataView, tiffStart: number): PhotoLocation | nul
     const latitude = toDecimalDegrees(lat, latRef)
     const longitude = toDecimalDegrees(lon, lonRef)
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
-    if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null
+    if (!isValidPhotoLocation(latitude, longitude)) return null
 
     return { latitude, longitude, source: 'exif' }
 }

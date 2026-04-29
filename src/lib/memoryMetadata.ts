@@ -9,6 +9,12 @@ const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const OPENAI_METADATA_MODEL = 'gpt-5.4-mini'
 const METADATA_TIMEOUT_MS = 90_000
 const DEFAULT_DESCRIPTION = 'Generated from photo'
+const OPENAI_SUPPORTED_IMAGE_TYPES = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+])
 
 const METADATA_PROMPT = `# Role
 你是一个专注客观物理痕迹重建的“数字考古分析器”。你的任务是基于图像中物体表面的物理特征（如磨损、断裂、刻划、印记等），逆向推演并重建这些痕迹发生的客观历史经过。
@@ -72,7 +78,8 @@ export async function generateMemoryMetadataFromImage(
     const timeout = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS)
 
     try {
-        const imageDataUrl = `data:${contentType || 'image/jpeg'};base64,${Buffer.from(imageBytes).toString('base64')}`
+        const imageInput = await prepareImageForOpenAI(imageBytes, contentType, filename)
+        const imageDataUrl = `data:${imageInput.contentType};base64,${imageInput.buffer.toString('base64')}`
         const response = await fetch(OPENAI_RESPONSES_URL, {
             method: 'POST',
             signal: controller.signal,
@@ -125,6 +132,50 @@ export async function generateMemoryMetadataFromImage(
     } finally {
         clearTimeout(timeout)
     }
+}
+
+async function prepareImageForOpenAI(
+    imageBytes: ArrayBuffer,
+    contentType: string,
+    filename: string
+): Promise<{ buffer: Buffer; contentType: string }> {
+    const normalizedType = normalizeImageContentType(contentType, filename)
+    const buffer = Buffer.from(imageBytes)
+
+    if (normalizedType !== 'image/heic' && normalizedType !== 'image/heif') {
+        return {
+            buffer,
+            contentType: OPENAI_SUPPORTED_IMAGE_TYPES.has(normalizedType) ? normalizedType : 'image/jpeg',
+        }
+    }
+
+    const heicConvertModule = await import('heic-convert')
+    const convert = heicConvertModule.default ?? heicConvertModule
+    const converted = await convert({
+        buffer,
+        format: 'JPEG',
+        quality: 0.92,
+    })
+
+    return {
+        buffer: converted instanceof ArrayBuffer
+            ? Buffer.from(converted)
+            : Buffer.from(converted.buffer, converted.byteOffset, converted.byteLength),
+        contentType: 'image/jpeg',
+    }
+}
+
+function normalizeImageContentType(contentType: string, filename: string): string {
+    const lowerType = contentType.toLowerCase().split(';', 1)[0].trim()
+    if (lowerType) return lowerType === 'image/jpg' ? 'image/jpeg' : lowerType
+
+    const lowerName = filename.toLowerCase()
+    if (lowerName.endsWith('.heic')) return 'image/heic'
+    if (lowerName.endsWith('.heif')) return 'image/heif'
+    if (lowerName.endsWith('.png')) return 'image/png'
+    if (lowerName.endsWith('.webp')) return 'image/webp'
+    if (lowerName.endsWith('.gif')) return 'image/gif'
+    return 'image/jpeg'
 }
 
 function extractResponseText(payload: unknown): string | null {

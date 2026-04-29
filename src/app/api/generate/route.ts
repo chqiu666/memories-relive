@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
-import { extractExifLocation, type PhotoLocation } from '@/lib/exif'
+import { extractExifLocation, isValidPhotoLocation, type PhotoLocation } from '@/lib/exif'
 import { fallbackMemoryMetadata, generateMemoryMetadataFromImage } from '@/lib/memoryMetadata'
 import { addPlySampleSuffix, downsamplePlyBytes } from '@/lib/ply'
 
@@ -8,10 +8,15 @@ import { addPlySampleSuffix, downsamplePlyBytes } from '@/lib/ply'
  * POST /api/generate
  *
  * Full pipeline: image → OpenAI metadata + Modal ml-sharp in parallel → full PLY
- * → sampled PLYs → Vercel Blob → Neon DB
+ * → sampled PLYs → Vercel Blob → preview response.
+ *
+ * DB insert is deferred to POST /api/memories after the user confirms the upload.
  *
  * Request: multipart/form-data with 'image' field
- * Returns: { id, title, model_url, model_full_url, model_web_url, model_garden_url, thumbnail_url }
+ * Returns: {
+ *   title, description, model_url, model_full_url, model_web_url, model_garden_url,
+ *   thumbnail_url, photo_latitude, photo_longitude, photo_location_source
+ * }
  */
 
 // Increase Vercel function timeout (default is 10s, ml-sharp needs ~60s)
@@ -167,10 +172,7 @@ function getLocationFromModalHeaders(headers: Headers): PhotoLocation | null {
     const longitude = Number(headers.get('X-Photo-Longitude'))
 
     if (
-        Number.isFinite(latitude) &&
-        Number.isFinite(longitude) &&
-        Math.abs(latitude) <= 90 &&
-        Math.abs(longitude) <= 180
+        isValidPhotoLocation(latitude, longitude)
     ) {
         return { latitude, longitude, source: 'exif' }
     }

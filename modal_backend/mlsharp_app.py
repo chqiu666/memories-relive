@@ -125,6 +125,8 @@ def _extract_gps_from_bytes(image_bytes: bytes, filename: str) -> tuple[float, f
             return None
         if abs(latitude) > 90 or abs(longitude) > 180:
             return None
+        if latitude == 0 and longitude == 0:
+            return None
 
         return latitude, longitude
     except Exception as exc:
