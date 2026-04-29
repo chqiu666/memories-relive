@@ -226,7 +226,7 @@ export function MapboxMemoryMap({
                 zoom: variant === 'detail' ? 11.35 : 11,
                 pitch: 0,
                 bearing: 0,
-                duration: 500,
+                duration: 0,
             })
             return
         }
@@ -241,7 +241,7 @@ export function MapboxMemoryMap({
                 maxZoom: variant === 'spatial' ? 12 : 10.5,
                 pitch: 0,
                 bearing: 0,
-                duration: 650,
+                duration: 0,
             })
         }
     }, [activeMemoryId, locatedMemories, mapLoaded, onSelectMemory, variant])
